@@ -1,0 +1,37 @@
+# AutoGrammar Configuration
+
+project:
+  name: "AutoGrammar"
+  version: "1.0.0"
+  description: "Machine Learning-Based Automatic Grammar Inference for Domain-Specific Languages (DSL) with MySQL"
+  seed: 42
+
+dataset:
+  target_students: 10000
+  target_valid_queries: 5000
+  target_invalid_queries: 2000
+  train_split: 0.70
+  val_split: 0.15
+  test_split: 0.15
+  output_dir: "data"
+
+database:
+  host: "localhost"
+  port: 3306
+  database: "school_db"
+  user: "root"
+  password: ""
+  timeout: 5
+
+grammars:
+  baseline_path: "grammars/baseline.lark"
+  learned_path: "grammars/learned.lark"
+  versions_dir: "grammars/versions"
+
+ml:
+  model_dir: "ml/saved_models"
+  ngram_range: [1, 3]
+  max_features: 5000
+
+compiler:
+  parser_type: "earley"

@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment Variables
+.env
+
+# Models and Artifacts
+ml/saved_models/*.joblib
+ml/saved_models/*.pkl
+
+# Streamlit
+.streamlit/
+
+# OS Specific
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# LaTeX temporary files
+report/*.aux
+report/*.log
+report/*.out
+report/*.bbl
+report/*.blg
+report/*.synctex.gz
+report/*.toc

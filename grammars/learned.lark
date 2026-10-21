@@ -1,0 +1,70 @@
+// AutoGrammar Induced Grammar (Machine-Learned from Training Corpus)
+// Inferred at: 2026-10-21T21:02:01.882763
+// Discovered statement types: INSERT_STMT, SELECT_STMT, UPDATE_STMT
+
+?start: statement [";"]
+
+?statement: select_stmt
+          | insert_stmt
+          | update_stmt
+
+select_stmt: "SELECT"i [distinct_clause] select_list from_clause [where_clause] [groupby_clause] [having_clause] [orderby_clause] [limit_clause]
+distinct_clause: "DISTINCT"i
+select_list: select_item ("," select_item)*
+select_item: aggregate_expr [alias_clause]
+           | column_ref [alias_clause]
+           | "*"
+alias_clause: ["AS"i] CNAME
+
+from_clause: "FROM"i table_source (join_clause)*
+join_clause: (["INNER"i] "JOIN"i | "LEFT"i ["JOIN"i]) table_source "ON"i condition
+table_source: CNAME ["AS"i CNAME]
+
+where_clause: "WHERE"i condition
+?condition: or_expr
+?or_expr: and_expr ("OR"i and_expr)*
+?and_expr: not_expr ("AND"i not_expr)*
+?not_expr: "NOT"i not_expr -> not_condition
+         | predicate
+?predicate: comparison_predicate
+          | in_predicate
+          | between_predicate
+          | like_predicate
+          | null_predicate
+          | "(" condition ")"
+comparison_predicate: expr COMP_OP expr
+in_predicate: expr "IN"i "(" (literal_list | select_stmt) ")"
+between_predicate: expr "BETWEEN"i expr "AND"i expr
+like_predicate: expr "LIKE"i STRING
+null_predicate: expr "IS"i ["NOT"i] "NULL"i
+
+?expr: aggregate_expr
+     | column_ref
+     | literal
+     | "(" select_stmt ")" -> scalar_subquery
+AGG_FUNC.2: /(?i:AVG|MAX|MIN)/
+aggregate_expr: AGG_FUNC "(" (column_ref | "*" | literal) ")"
+column_ref: [CNAME "."] (CNAME | "*")
+literal_list: literal ("," literal)*
+?literal: NUMBER | STRING
+
+groupby_clause: "GROUP"i "BY"i group_item ("," group_item)*
+group_item: column_ref
+having_clause: "HAVING"i condition
+orderby_clause: "ORDER"i "BY"i order_item ("," order_item)*
+order_item: column_ref ["ASC"i | "DESC"i]
+limit_clause: "LIMIT"i NUMBER
+
+insert_stmt: "INSERT"i "INTO"i CNAME ["(" column_name_list ")"] "VALUES"i "(" value_list ")"
+column_name_list: CNAME ("," CNAME)*
+value_list: literal ("," literal)*
+
+update_stmt: "UPDATE"i CNAME "SET"i set_assignment ("," set_assignment)* [where_clause]
+set_assignment: CNAME "=" literal
+
+COMP_OP.2: "<=" | ">=" | "!=" | "<>" | "=" | "<" | ">"
+%import common.CNAME
+%import common.NUMBER
+STRING: /'([^'\\]|\\.)*'/
+%import common.WS
+%ignore WS

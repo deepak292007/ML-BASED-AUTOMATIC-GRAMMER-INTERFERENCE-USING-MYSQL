@@ -1,0 +1,38 @@
+[
+  {
+    "System / Paradigm": "Fixed Baseline Grammar (Compiler Reference)",
+    "Technique": "Manually Authored EBNF + Earley/LALR Parser",
+    "Accuracy": 1.0,
+    "Valid Acceptance (Recall)": 1.0,
+    "Invalid Rejection (Specificity)": 1.0,
+    "False Acceptance (FAR)": 0.0,
+    "False Rejection (FRR)": 0.0,
+    "Grammar Rule Precision": 1.0,
+    "Grammar Rule Recall": 1.0,
+    "Generates Parse Tree": "Yes (Deterministic)"
+  },
+  {
+    "System / Paradigm": "AutoGrammar Learned Grammar (Induction)",
+    "Technique": "Structural Pattern Mining + Dynamic EBNF Synthesis",
+    "Accuracy": 0.8953,
+    "Valid Acceptance (Recall)": 0.8571,
+    "Invalid Rejection (Specificity)": 1.0,
+    "False Acceptance (FAR)": 0.0,
+    "False Rejection (FRR)": 0.1429,
+    "Grammar Rule Precision": 1.0,
+    "Grammar Rule Recall": 0.975,
+    "Generates Parse Tree": "Yes (Deterministic)"
+  },
+  {
+    "System / Paradigm": "ML Statistical Baseline Classifier",
+    "Technique": "TF-IDF (1-3 n-grams) + Logistic Regression",
+    "Accuracy": 0.6666666666666666,
+    "Valid Acceptance (Recall)": 0.8511904761904762,
+    "Invalid Rejection (Specificity)": 0.1601,
+    "False Acceptance (FAR)": 0.8399,
+    "False Rejection (FRR)": 0.1488,
+    "Grammar Rule Precision": "N/A (Black-box)",
+    "Grammar Rule Recall": "N/A (Black-box)",
+    "Generates Parse Tree": "No"
+  }
+]

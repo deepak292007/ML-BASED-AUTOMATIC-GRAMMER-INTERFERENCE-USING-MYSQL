@@ -1,0 +1,4 @@
+System / Paradigm,Technique,Accuracy,Valid Acceptance (Recall),Invalid Rejection (Specificity),False Acceptance (FAR),False Rejection (FRR),Grammar Rule Precision,Grammar Rule Recall,Generates Parse Tree
+Fixed Baseline Grammar (Compiler Reference),Manually Authored EBNF + Earley/LALR Parser,1.0,1.0,1.0,0.0,0.0,1.0,1.0,Yes (Deterministic)
+AutoGrammar Learned Grammar (Induction),Structural Pattern Mining + Dynamic EBNF Synthesis,0.8953,0.8571,1.0,0.0,0.1429,1.0,0.975,Yes (Deterministic)
+ML Statistical Baseline Classifier,TF-IDF (1-3 n-grams) + Logistic Regression,0.6666666666666666,0.8511904761904762,0.1601,0.8399,0.1488,N/A (Black-box),N/A (Black-box),No

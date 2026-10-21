@@ -1,0 +1,111 @@
+{
+  "generated_timestamp": "2026-10-21T20:45:16.694450",
+  "random_seed": 42,
+  "database_records": {
+    "synthetic_students": 10000,
+    "synthetic_teachers": 40,
+    "synthetic_classes": 7,
+    "synthetic_subjects": 6,
+    "synthetic_marks": 6031,
+    "synthetic_attendance": 6000
+  },
+  "query_dataset": {
+    "total_queries": 7000,
+    "valid_queries": 5000,
+    "invalid_queries": 2000,
+    "unique_templates": 68,
+    "valid_templates": 42,
+    "invalid_templates": 26
+  },
+  "splits": {
+    "train": {
+      "count": 4826,
+      "valid": 3440,
+      "invalid": 1386,
+      "templates": [
+        "I_LEX_01",
+        "I_LEX_03",
+        "I_SEM_02",
+        "I_SEM_03",
+        "I_SEM_04",
+        "I_SYN_01",
+        "I_SYN_03",
+        "I_SYN_04",
+        "I_SYN_06",
+        "I_SYN_07",
+        "I_SYN_09",
+        "I_SYN_10",
+        "I_SYN_12",
+        "I_SYN_14",
+        "I_SYN_15",
+        "I_SYN_16",
+        "I_USP_01",
+        "I_USP_02",
+        "V_AGG_04",
+        "V_AGG_05",
+        "V_INS_01",
+        "V_INS_02",
+        "V_JON_01",
+        "V_JON_02",
+        "V_JON_03",
+        "V_LOG_02",
+        "V_LOG_04",
+        "V_MUL_01",
+        "V_MUL_02",
+        "V_OPR_01",
+        "V_OPR_02",
+        "V_OPR_03",
+        "V_OPR_04",
+        "V_OPR_05",
+        "V_ORD_01",
+        "V_ORD_03",
+        "V_SEL_01",
+        "V_SEL_02",
+        "V_SUB_01",
+        "V_SUB_02",
+        "V_UPD_01",
+        "V_UPD_02",
+        "V_WHR_01",
+        "V_WHR_02",
+        "V_WHR_03",
+        "V_WHR_04",
+        "V_WHR_06"
+      ]
+    },
+    "validation": {
+      "count": 1028,
+      "valid": 720,
+      "invalid": 308,
+      "templates": [
+        "I_LEX_02",
+        "I_SEM_01",
+        "I_SYN_08",
+        "I_SYN_11",
+        "V_AGG_01",
+        "V_AGG_03",
+        "V_DEL_01",
+        "V_DEL_02",
+        "V_ORD_02",
+        "V_SEL_03"
+      ]
+    },
+    "test": {
+      "count": 1146,
+      "valid": 840,
+      "invalid": 306,
+      "templates": [
+        "I_SYN_02",
+        "I_SYN_05",
+        "I_SYN_13",
+        "I_USP_03",
+        "V_AGG_02",
+        "V_DTE_01",
+        "V_DTE_02",
+        "V_JON_04",
+        "V_LOG_01",
+        "V_LOG_03",
+        "V_WHR_05"
+      ]
+    }
+  }
+}

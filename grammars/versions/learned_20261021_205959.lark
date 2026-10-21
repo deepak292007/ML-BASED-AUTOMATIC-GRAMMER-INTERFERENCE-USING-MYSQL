@@ -1,0 +1,45 @@
+// AutoGrammar Induced Grammar (Machine-Learned from Training Corpus)
+// Inferred at: 2026-10-21T20:59:59.481894
+// Discovered statement types: SELECT_STMT
+
+?start: statement [";"]
+
+?statement: select_stmt
+
+select_stmt: "SELECT"i [distinct_clause] select_list from_clause
+distinct_clause: "DISTINCT"i
+select_list: select_item ("," select_item)*
+select_item: aggregate_expr [alias_clause]
+           | column_ref [alias_clause]
+           | "*"
+alias_clause: ["AS"i] CNAME
+
+from_clause: "FROM"i table_source
+table_source: CNAME ["AS"i CNAME]
+
+where_clause: "WHERE"i condition
+?condition: or_expr
+?or_expr: and_expr ("OR"i and_expr)*
+?and_expr: not_expr ("AND"i not_expr)*
+?not_expr: "NOT"i not_expr -> not_condition
+         | predicate
+?predicate: comparison_predicate
+          | "(" condition ")"
+comparison_predicate: expr COMP_OP expr
+
+?expr: aggregate_expr
+     | column_ref
+     | literal
+AGG_FUNC.2: /(?i:COUNT|SUM|AVG|MIN|MAX)/
+aggregate_expr: AGG_FUNC "(" (column_ref | "*" | literal) ")"
+column_ref: [CNAME "."] (CNAME | "*")
+literal_list: literal ("," literal)*
+?literal: NUMBER | STRING
+
+
+COMP_OP.2: "<=" | ">=" | "!=" | "<>" | "=" | "<" | ">"
+%import common.CNAME
+%import common.NUMBER
+STRING: /'([^'\\]|\\.)*'/
+%import common.WS
+%ignore WS
