@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoGrammar | Machine Learning-Based DSL Grammar Inference Showcase</title>
+  <meta name="description" content="AutoGrammar automatically synthesizes formal, verifiable Context-Free EBNF grammars directly from SQL training queries over school_db.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Sticky Navbar -->
+  <header class="navbar" role="banner">
+    <div class="container nav-container">
+      <div class="nav-brand">
+        <span aria-hidden="true">⚡</span>
+        <span class="cfg-project-title">AutoGrammar</span>
+      </div>
+
+      <nav class="nav-links" aria-label="Main Navigation">
+        <a href="#sec-hero" class="active">Overview</a>
+        <a href="#sec-approach">Approach</a>
+        <a href="#sec-pipeline">Pipeline</a>
+        <a href="#sec-demo">Live Demo</a>
+        <a href="#sec-grammar">Grammar</a>
+        <a href="#sec-results">Results</a>
+        <a href="#sec-data">Data &amp; Schema</a>
+        <a href="#sec-traceability">Traceability</a>
+        <a href="#sec-viva">Viva Q&amp;A</a>
+        <a href="#sec-reproduce">Reproduce</a>
+      </nav>
+
+      <div class="nav-controls">
+        <button id="btn-theme-toggle" class="btn-ctrl" aria-label="Toggle Dark/Light Mode">☀️ Light</button>
+        <button id="btn-presentation-toggle" class="btn-ctrl" aria-label="Toggle Presentation Slide Mode">📺 Present</button>
+        <button class="btn-ctrl" onclick="toggleShortcutsModal(true)" aria-label="Keyboard Shortcuts">⌨️ Shortcuts</button>
+        <div id="presentation-indicator" style="display:none; font-size:11px; font-weight:bold; color:var(--accent-cyan); margin-left:6px;">Slide 1</div>
+      </div>
+    </div>
+  </header>
+
+  <main role="main">
+    <!-- =====================================================================
+         1. HERO SECTION
+         ===================================================================== -->
+    <section id="sec-hero" class="section">
+      <div class="container hero-content">
+        <div class="section-tag">Machine Learning &bull; Compiler Engineering &bull; DSL Inference</div>
+        <h1 class="hero-title">Automatic Grammar Inference for SQL DSL</h1>
+        <p class="hero-subtitle">
+          Bridging the gap between brittle hand-crafted parsers and black-box neural classifiers by automatically inducing verifiable Context-Free EBNF grammars from query corpora.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#sec-demo" class="btn-primary">🚀 Try the Live Demo</a>
+          <a href="#sec-results" class="btn-secondary">📈 See Evaluation Benchmarks</a>
+        </div>
+
+        <!-- Animated Count-Up Stat Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">
+              <span>Overall Accuracy</span>
+              <span class="source-tag">evaluation/results</span>
+            </div>
+            <div class="stat-value"><span class="count-up" data-target="89.53" data-decimal="true">0</span>%</div>
+            <div class="stat-sub">Held-out test set (1,146 queries)</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-label">
+              <span>False Acceptance (FAR)</span>
+              <span class="source-tag">eval_app.py verified</span>
+            </div>
+            <div class="stat-value" style="color:var(--accent-green);"><span class="count-up" data-target="0.0" data-decimal="true">0</span>%</div>
+            <div class="stat-sub">0 invalid queries passed compiler</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-label">
+              <span>Learned Productions</span>
+              <span class="source-tag">grammars/learned.lark</span>
+            </div>
+            <div class="stat-value"><span class="count-up" data-target="39" data-decimal="false">0</span> Rules</div>
+            <div class="stat-sub">97.5% baseline rule recall</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-label">
+              <span>Zero-Leakage Test Queries</span>
+              <span class="source-tag">data/test.csv</span>
+            </div>
+            <div class="stat-value"><span class="count-up" data-target="1146" data-decimal="false">0</span></div>
+            <div class="stat-sub">Template overlap = 0 across splits</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         2. WHY THIS APPROACH
+         ===================================================================== -->
+    <section id="sec-approach" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Motivation &amp; Methodology</div>
+          <h2>Why Grammar Induction Over Black-Box Models?</h2>
+          <p class="section-desc">
+            Traditional hand-crafted parsers require expert compiler engineering, while bag-of-words / neural classifiers suffer high false acceptance and cannot construct parse trees or localize syntax errors.
+          </p>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.2rem; margin-bottom:2rem;">
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.4rem;">
+            <h3 style="color:#f87171;">⚠️ Why Bag-of-Words &amp; Classifiers Fall Short</h3>
+            <p style="font-size:0.88rem; color:var(--text-secondary); margin-top:0.4rem;">
+              Classifiers evaluate n-gram token co-occurrences without structural grammar awareness. Malformed queries like <code>SELECT * FROM marks WHERE marks_obtained > = 60;</code> fool statistical classifiers into predicting 84% valid likelihood because all words are familiar.
+            </p>
+            <span class="badge badge-reject">83.99% False Acceptance Rate</span>
+          </div>
+
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.4rem;">
+            <h3 style="color:#34d399;">✓ Why Automatic Grammar Induction Succeeds</h3>
+            <p style="font-size:0.88rem; color:var(--text-secondary); margin-top:0.4rem;">
+              AutoGrammar mines syntactic skeletons from valid training queries, abstracts identifiers/literals, and generates verifiable Context-Free EBNF productions executed by deterministic Earley parsers.
+            </p>
+            <span class="badge badge-accept">0.0% False Acceptance &bull; Deterministic AST</span>
+          </div>
+        </div>
+
+        <h3>Interactive Stepper: Synthesizing Rules from a Real Training Query</h3>
+        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:1rem;">
+          Query: <code>SELECT first_name, last_name, city, state FROM students WHERE state = 'Karnataka';</code>
+        </p>
+        <div id="stepper-container" class="stepper"></div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         3. FOUR-STAGE PIPELINE
+         ===================================================================== -->
+    <section id="sec-pipeline" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Architecture</div>
+          <h2>Interactive 4-Stage Compiler Pipeline</h2>
+          <p class="section-desc">Click any stage below to inspect its responsibility, error localization mechanism, and pass/fail examples.</p>
+        </div>
+
+        <div class="pipeline-grid">
+          <div class="pipeline-card active" data-stage="stage0">
+            <div style="font-size:11px; font-weight:800; color:var(--accent-cyan); text-transform:uppercase;">Stage 0</div>
+            <div style="font-size:16px; font-weight:700; margin:2px 0 6px 0;">🛡️ Security Gate</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Pre-parse AST guardrail blocking destructive DDL and injection batching.</div>
+          </div>
+
+          <div class="pipeline-card" data-stage="stage1">
+            <div style="font-size:11px; font-weight:800; color:var(--accent-cyan); text-transform:uppercase;">Stage 1</div>
+            <div style="font-size:16px; font-weight:700; margin:2px 0 6px 0;">🔍 Lexer</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Token classification, 1-indexed line/column tracking, illegal symbol rejection.</div>
+          </div>
+
+          <div class="pipeline-card" data-stage="stage2">
+            <div style="font-size:11px; font-weight:800; color:var(--accent-cyan); text-transform:uppercase;">Stage 2</div>
+            <div style="font-size:16px; font-weight:700; margin:2px 0 6px 0;">🌳 Parser</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Earley parser executing inferred EBNF grammar, building AST parse tree.</div>
+          </div>
+
+          <div class="pipeline-card" data-stage="stage3">
+            <div style="font-size:11px; font-weight:800; color:var(--accent-cyan); text-transform:uppercase;">Stage 3</div>
+            <div style="font-size:16px; font-weight:700; margin:2px 0 6px 0;">📋 Semantic Check</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Schema catalog bindings, table/column validation, Levenshtein suggestions.</div>
+          </div>
+        </div>
+
+        <div id="pipeline-detail-box" class="pipeline-details-box"></div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         4. LIVE DEMO (PLAYGROUND)
+         ===================================================================== -->
+    <section id="sec-demo" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Hands-On Testing</div>
+          <h2>Live Query Playground &amp; Multi-System Verification</h2>
+          <p class="section-desc">
+            Test custom queries or select from 12 benchmark presets. Inspect <strong>Baseline</strong>, <strong>Learned</strong>, and <strong>ML Classifier</strong> verdicts side-by-side with token streams, parse trees, and safe database sandbox results.
+          </p>
+        </div>
+
+        <!-- Presets Selection Bar -->
+        <h3 style="font-size:1rem; margin-bottom:0.5rem;">Select an Evaluation Preset (Required 8 Presets + Extras):</h3>
+        <div id="presets-container" class="presets-grid"></div>
+
+        <div class="playground-layout">
+          <!-- Schema Sidebar -->
+          <aside class="schema-sidebar" aria-label="Relational Schema Browser">
+            <div id="schema-sidebar-container"></div>
+          </aside>
+
+          <!-- Main Playground Content -->
+          <div class="playground-main">
+            <!-- Source Tag Banner -->
+            <div id="verdict-source-banner" style="margin-bottom:0.8rem;"></div>
+
+            <!-- Error Caret Container -->
+            <div id="error-caret-container" style="display:none;"></div>
+
+            <!-- Editor -->
+            <div class="editor-wrapper">
+              <div class="editor-toolbar">
+                <span style="font-size:0.8rem; font-weight:700; color:var(--text-secondary);">SQL DSL Query Editor:</span>
+                <div>
+                  <button id="btn-copy-query" class="btn-ctrl">📋 Copy Query</button>
+                  <button id="btn-clear-query" class="btn-ctrl">🗑️ Clear</button>
+                  <button id="btn-run-query" class="btn-primary" style="padding:0.4rem 0.9rem; font-size:0.82rem;">⚡ Run Evaluation</button>
+                </div>
+              </div>
+              <textarea id="sql-editor-input" class="sql-editor" spellcheck="false" placeholder="Enter SQL DSL query..." aria-label="SQL DSL Query Editor"></textarea>
+            </div>
+
+            <!-- Query History -->
+            <div style="margin-bottom:1rem;">
+              <span style="font-size:11px; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">Recent Queries: </span>
+              <span id="query-history-container"></span>
+            </div>
+
+            <!-- 3 Columns Side-by-Side -->
+            <div class="verdict-columns">
+              <div id="verdict-col-baseline" class="verdict-col"></div>
+              <div id="verdict-col-learned" class="verdict-col"></div>
+              <div id="verdict-col-ml" class="verdict-col"></div>
+            </div>
+
+            <!-- Inspection Tabs -->
+            <div style="margin-top:1.5rem;">
+              <div class="tabs-nav" role="tablist">
+                <button class="tab-btn active" data-tab="tab-tokens" role="tab">🔍 Lexical Token Stream</button>
+                <button class="tab-btn" data-tab="tab-tree" role="tab">🌳 ASCII Parse Tree</button>
+                <button class="tab-btn" data-tab="tab-database" role="tab">🗄️ Relational Database Execution</button>
+              </div>
+
+              <div id="tab-tokens" class="tab-content active" role="tabpanel">
+                <div id="tokens-tab-container"></div>
+              </div>
+
+              <div id="tab-tree" class="tab-content" role="tabpanel">
+                <div id="tree-tab-container"></div>
+              </div>
+
+              <div id="tab-database" class="tab-content" role="tabpanel">
+                <div id="database-tab-container"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         5. GRAMMAR & REFINEMENT SANDBOX
+         ===================================================================== -->
+    <section id="sec-grammar" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Formal Grammar &bull; EBNF</div>
+          <h2>Learned Grammar &amp; Interactive Refinement Sandbox</h2>
+          <p class="section-desc">
+            Inspect the active Lark Context-Free EBNF productions inferred by AutoGrammar. Review structural precision/recall vs baseline and interactively refine the grammar for unobserved test constructs.
+          </p>
+        </div>
+
+        <!-- Grammar Metrics Summary -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+          <div class="stat-card">
+            <div class="stat-label">Production Count</div>
+            <div class="stat-value"><span id="grammar-production-count">39</span> Rules</div>
+            <div class="stat-sub">39 non-terminals in grammars/learned.lark</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Production Precision</div>
+            <div class="stat-value" style="color:var(--accent-green);">100.0%</div>
+            <div class="stat-sub">39/39 shared with reference baseline</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Production Recall</div>
+            <div class="stat-value" style="color:var(--accent-cyan);">97.5%</div>
+            <div class="stat-sub">39/40 baseline rules (missing delete_stmt)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Rule F1-Score</div>
+            <div class="stat-value" style="color:#c084fc;">0.9873</div>
+            <div class="stat-sub">Computed: 2PR/(P+R) = 0.9873 (README 0.9873)</div>
+          </div>
+        </div>
+
+        <!-- EBNF Code Viewer -->
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1rem; margin-bottom:2rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+            <span style="font-weight:700; font-size:0.9rem;">grammars/learned.lark (Machine-Synthesized Context-Free EBNF)</span>
+            <input type="text" id="grammar-search-input" placeholder="Search rules (e.g. select_stmt, AGG_FUNC)..." style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); padding:0.35rem 0.7rem; border-radius:var(--radius-sm); font-size:0.8rem; width:260px;" aria-label="Search grammar rules">
+          </div>
+          <pre style="max-height:300px; overflow-y:auto; background:var(--bg-primary); border:1px solid var(--border-color); padding:1rem; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.8rem; color:#7dd3fc;"><code id="ebnf-code-display"></code></pre>
+        </div>
+
+        <!-- Refinement Sandbox -->
+        <h3>Interactive Refinement Sandbox</h3>
+        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:1rem;">
+          In zero-leakage splits, certain valid constructs (e.g. <code>COUNT</code> in template <code>V_AGG_02</code>) appear strictly in the test set. Test how AutoGrammar interactively repairs the grammar in a safe session copy:
+        </p>
+
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.4rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <strong>Target Query:</strong>
+            <span id="refinement-status-badge" class="badge badge-reject">STATUS: REJECTED (Unrefined)</span>
+          </div>
+          <pre style="background:var(--bg-primary); border:1px solid var(--border-color); padding:0.8rem; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.85rem; color:#f8fafc; margin-bottom:1rem;">SELECT class_id, COUNT(*) AS student_count FROM students GROUP BY class_id;</pre>
+
+          <div style="background:var(--bg-card); border-left:3px solid var(--accent-amber); padding:0.8rem; border-radius:var(--radius-sm); font-size:0.85rem; margin-bottom:1rem;">
+            <strong>Engine Diagnosis &amp; Proposed Modification:</strong><br>
+            <span style="color:#94a3b8;">Syntax error: Unexpected token 'COUNT'. Candidate induction expands <code>AGG_FUNC.2</code> regex:</span><br>
+            <code style="color:#38bdf8;">~ Modified Rule: AGG_FUNC.2: /(?i:AVG|COUNT|MAX|MIN|SUM)/</code>
+          </div>
+
+          <div style="display:flex; gap:0.8rem;">
+            <button id="btn-refine-approve" class="btn-primary" style="font-size:0.85rem; padding:0.5rem 1rem;">✅ Approve &amp; Apply to Session Grammar</button>
+            <button id="btn-refine-reset" class="btn-secondary" style="font-size:0.85rem; padding:0.5rem 1rem;">🔄 Reset to Committed Grammar</button>
+            <button id="btn-download-grammar" class="btn-ctrl" style="font-size:0.85rem; padding:0.5rem 1rem;">📥 Download Grammar (.lark)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         6. EVALUATION RESULTS
+         ===================================================================== -->
+    <section id="sec-results" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Held-Out Test Benchmarks (1,146 Queries)</div>
+          <h2>Evaluation &amp; Model Comparison</h2>
+          <p class="section-desc">
+            Head-to-head benchmarking of the Baseline Reference Grammar, AutoGrammar Learned Grammar, and the TF-IDF Baseline Classifier on 1,146 held-out test queries (840 valid, 306 invalid).
+          </p>
+        </div>
+
+        <!-- Comparative Metrics Table -->
+        <h3>1. Performance Benchmark Table</h3>
+        <div class="data-table-wrapper" style="margin-bottom:1.8rem;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>System / Paradigm</th>
+                <th>Accuracy</th>
+                <th>Valid Acceptance (TPR)</th>
+                <th>Invalid Rejection (TNR)</th>
+                <th>False Acceptance (FAR)</th>
+                <th>False Rejection (FRR)</th>
+                <th>Generates Parse Tree</th>
+              </tr>
+            </thead>
+            <tbody id="benchmark-table-body"></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; gap:0.8rem; margin-bottom:2rem;">
+          <button id="btn-download-csv" class="btn-ctrl">📥 Download model_comparison.csv</button>
+          <button id="btn-download-json" class="btn-ctrl">📥 Download model_comparison.json</button>
+        </div>
+
+        <!-- Charts Grid -->
+        <div style="display:grid; grid-template-columns: 1fr; gap:2rem; margin-bottom:2rem;">
+          <div>
+            <h3>2. Comparative Metric Bar Chart</h3>
+            <div id="benchmark-chart-container"></div>
+          </div>
+
+          <div>
+            <h3>3. Confusion Matrix Heatmaps (Held-Out Test Set: 840 Valid / 306 Invalid)</h3>
+            <div id="confusion-matrices-container"></div>
+          </div>
+
+          <div>
+            <h3>4. Rejection Rate Breakdown on Invalid Query Categories (306 Queries)</h3>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.8rem;">
+              Compilers achieve a strict 100% rejection rate on malformed syntax, whereas the statistical ML classifier lets over 84% through.
+            </p>
+            <div id="category-chart-container" style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.2rem;"></div>
+          </div>
+
+          <div>
+            <h3>5. Induction Learning Curve (Generalization vs Training Diversity)</h3>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.8rem;">
+              Accuracy and False Rejection Rate (FRR) as the engine is exposed to 10%, 25%, 50%, 75%, and 100% of training templates.
+            </p>
+            <div id="learning-curve-container"></div>
+          </div>
+        </div>
+
+        <!-- False-Rejection Explorer -->
+        <h3>6. False-Rejection Explorer (120 Valid Test Queries Rejected)</h3>
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.8rem;">
+          All 120 false rejections belong to template <code>V_AGG_02</code> (which uses <code>COUNT(*)</code>). Filter and inspect individual queries:
+        </p>
+
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1rem; margin-bottom:1rem; display:flex; gap:1rem; align-items:center;">
+          <div>
+            <label for="fr-template-filter" style="font-size:12px; font-weight:bold; color:var(--text-secondary); margin-right:6px;">Filter by Template:</label>
+            <select id="fr-template-filter" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); padding:0.35rem 0.6rem; border-radius:var(--radius-sm); font-size:0.8rem;">
+              <option value="ALL">All Templates</option>
+            </select>
+          </div>
+          <div>
+            <label for="fr-search-input" style="font-size:12px; font-weight:bold; color:var(--text-secondary); margin-right:6px;">Search Text:</label>
+            <input type="text" id="fr-search-input" placeholder="Search query..." style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); padding:0.35rem 0.6rem; border-radius:var(--radius-sm); font-size:0.8rem; width:220px;">
+          </div>
+          <span id="fr-count-badge" class="badge badge-info" style="margin-left:auto;">120 queries</span>
+        </div>
+
+        <div class="data-table-wrapper" style="max-height:280px; overflow-y:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Query ID</th>
+                <th>Template</th>
+                <th>Query SQL Text</th>
+                <th>Unrefined Parser Error</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="false-rejection-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         7. DATA & METHOD
+         ===================================================================== -->
+    <section id="sec-data" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Experimental Rigor</div>
+          <h2>Data Methodology &amp; Database Schema</h2>
+          <p class="section-desc">
+            To prevent memorization and guarantee true grammatical induction, AutoGrammar partitions queries across strictly disjoint parameterized templates.
+          </p>
+        </div>
+
+        <!-- Split Diagram -->
+        <h3>1. Template-Disjoint Split Architecture (Zero Leakage)</h3>
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.8rem;">
+          Verified by <code>tests/test_dataset.py::test_zero_data_leakage_between_splits</code>:
+        </p>
+        <div id="split-diagram-container" style="margin-bottom:2rem;"></div>
+
+        <!-- ER Diagram -->
+        <h3>2. Relational Entity-Relationship (ER) Diagram (school_db)</h3>
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.8rem;">
+          Modeled in MySQL 8.0+ and SQLite Sandbox across 6 normalized relational entities:
+        </p>
+        <div id="er-diagram-container" style="margin-bottom:2rem;"></div>
+
+        <!-- Sample Rows -->
+        <h3>3. Dataset Sample Rows Preview (train.csv vs test.csv)</h3>
+        <div style="display:grid; grid-template-columns: 1fr; gap:1.5rem; margin-top:1rem;">
+          <div>
+            <h4 style="font-size:0.9rem; color:var(--accent-cyan); margin-bottom:0.5rem;">Sample Rows from train.csv (First 5 of 20 preview rows):</h4>
+            <div class="data-table-wrapper" style="max-height:200px;">
+              <table class="data-table">
+                <thead>
+                  <tr><th>ID</th><th>Template</th><th>Query</th><th>Label</th><th>Category</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>QRY_000001</td><td>V_LOG_02</td><td>SELECT first_name, last_name FROM students WHERE state = 'Karnataka' OR state = 'Telangana';</td><td>1</td><td>None</td></tr>
+                  <tr><td>QRY_000002</td><td>V_AGG_04</td><td>SELECT subject_id, AVG(marks_obtained) AS avg_mark FROM marks GROUP BY subject_id;</td><td>1</td><td>None</td></tr>
+                  <tr><td>QRY_000003</td><td>I_SYN_01</td><td>SELECT first_name, last_name WHERE state = 'Karnataka';</td><td>0</td><td>Missing FROM</td></tr>
+                  <tr><td>QRY_000004</td><td>V_JON_01</td><td>SELECT s.first_name, m.marks_obtained FROM students AS s INNER JOIN marks AS m ON s.student_id = m.student_id;</td><td>1</td><td>None</td></tr>
+                  <tr><td>QRY_000005</td><td>I_SEM_02</td><td>SELECT first_name, blood_group FROM students WHERE state = 'Delhi';</td><td>0</td><td>Unknown Column</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <h4 style="font-size:0.9rem; color:var(--accent-green); margin-bottom:0.5rem;">Sample Rows from test.csv (First 5 of 20 preview rows):</h4>
+            <div class="data-table-wrapper" style="max-height:200px;">
+              <table class="data-table">
+                <thead>
+                  <tr><th>ID</th><th>Template</th><th>Query</th><th>Label</th><th>Category</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>QRY_001179</td><td>V_LOG_01</td><td>SELECT first_name, class_id, section, state FROM students WHERE state = 'Karnataka' AND gender = 'Female';</td><td>1</td><td>None</td></tr>
+                  <tr><td>QRY_003810</td><td>V_DTE_02</td><td>SELECT student_id, attendance_status, attendance_date FROM attendance WHERE attendance_date = '2025-10-01';</td><td>1</td><td>None</td></tr>
+                  <tr><td>QRY_003502</td><td>V_JON_04</td><td>SELECT sub.subject_name, AVG(m.marks_obtained) AS avg_mark FROM subjects AS sub INNER JOIN marks AS m ON sub.subject_id = m.subject_id GROUP BY sub.subject_name;</td><td>1</td><td>None</td></tr>
+                  <tr><td>QRY_006168</td><td>I_SYN_13</td><td>SELECT * FROM marks WHERE marks_obtained > = 60;</td><td>0</td><td>Double Operator</td></tr>
+                  <tr><td>QRY_000948</td><td>V_WHR_05</td><td>SELECT mark_id, student_id, marks_obtained FROM marks WHERE marks_obtained &lt; 75;</td><td>1</td><td>None</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         8. REQUIREMENTS TRACEABILITY
+         ===================================================================== -->
+    <section id="sec-traceability" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Verification</div>
+          <h2>Requirements Traceability Matrix</h2>
+          <p class="section-desc">Honest mapping of project objectives to repository evidence and verification status.</p>
+        </div>
+
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Project Objective</th>
+                <th>Evaluation Status</th>
+                <th>Evidence &amp; Artifact File</th>
+                <th>Metric / Pass Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Automatic Grammar Induction</strong></td>
+                <td><span class="badge badge-accept">MET</span></td>
+                <td><code>compiler/grammar_induction.py</code>, <code>grammars/learned.lark</code></td>
+                <td>39 production rules inferred; 100% precision, 97.5% recall.</td>
+              </tr>
+              <tr>
+                <td><strong>SQL-like DSL over MySQL</strong></td>
+                <td><span class="badge badge-accept">MET</span></td>
+                <td><code>database/connection.py</code>, <code>database/schema.sql</code></td>
+                <td>PyMySQL connection pool + SQLite sandbox fallback with 10k rows.</td>
+              </tr>
+              <tr>
+                <td><strong>4-Stage Compiler Pipeline</strong></td>
+                <td><span class="badge badge-accept">MET</span></td>
+                <td><code>compiler/query_validator.py</code></td>
+                <td>Stage 0 Security Gate, Stage 1 Lexer, Stage 2 Parser, Stage 3 Semantics.</td>
+              </tr>
+              <tr>
+                <td><strong>Unseen-Data Evaluation</strong></td>
+                <td><span class="badge badge-accept">MET</span></td>
+                <td><code>data/test.csv</code>, <code>evaluation/results/</code></td>
+                <td>1,146 held-out test queries, template-disjoint (0 overlap confirmed).</td>
+              </tr>
+              <tr>
+                <td><strong>"Machine Learning" Claim</strong></td>
+                <td><span class="badge badge-warn">PARTIAL</span></td>
+                <td><code>compiler/grammar_induction.py</code>, <code>ml/train_classifier.py</code></td>
+                <td>Statistical pattern mining induction + TF-IDF baseline (not deep learning).</td>
+              </tr>
+              <tr>
+                <td><strong>Comprehensive Test Coverage</strong></td>
+                <td><span class="badge badge-accept">MET</span></td>
+                <td><code>tests/</code> (7 test suites)</td>
+                <td>25 passing unit and integration tests (<code>pytest tests -v</code>).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         9. LIMITATIONS & VIVA Q&A
+         ===================================================================== -->
+    <section id="sec-viva" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Examiner FAQ</div>
+          <h2>Limitations &amp; Viva Q&amp;A Accordion</h2>
+          <p class="section-desc">Honest, defensible answers to the 12 most critical technical questions expected during project review.</p>
+        </div>
+
+        <div style="background:var(--bg-secondary); border-left:3px solid var(--accent-amber); padding:1rem; border-radius:var(--radius-sm); font-size:0.85rem; margin-bottom:1.5rem;">
+          <strong>Known Project Limitations:</strong>
+          <ul style="margin-left:1.2rem; margin-top:0.4rem; color:var(--text-secondary);">
+            <li><strong>Single Train/Test Split:</strong> Results are reported on a single 70/15/15 seed-42 partition rather than 5-fold cross-validation.</li>
+            <li><strong>Synthetic Data:</strong> Ground truth queries are template-generated rather than collected from live student logs.</li>
+            <li><strong>Grammar Expressiveness:</strong> Supports core SELECT/JOIN/DML subsets; full ANSI SQL-99 (CTEs, window functions) is intentionally excluded.</li>
+          </ul>
+        </div>
+
+        <div id="viva-accordion-container"></div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         10. REPRODUCE
+         ===================================================================== -->
+    <section id="sec-reproduce" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">CLI Reproducibility</div>
+          <h2>Reproduce Project Artifacts</h2>
+          <p class="section-desc">Commands to execute and verify the full pipeline from the terminal.</p>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.2rem; margin-bottom:2rem;">
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong>1. Run Pytest Suite (25 Tests)</strong>
+              <button class="btn-ctrl" onclick="copyTextToClipboard('python -m pytest tests -v', this)">📋 Copy</button>
+            </div>
+            <pre style="background:var(--bg-primary); padding:0.6rem; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.8rem; color:#38bdf8;">python -m pytest tests -v</pre>
+          </div>
+
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong>2. Run Evaluator Streamlit App</strong>
+              <button class="btn-ctrl" onclick="copyTextToClipboard('python -m streamlit run eval_app.py', this)">📋 Copy</button>
+            </div>
+            <pre style="background:var(--bg-primary); padding:0.6rem; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.8rem; color:#38bdf8;">python -m streamlit run eval_app.py</pre>
+          </div>
+
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong>3. Run Comparative Benchmarking</strong>
+              <button class="btn-ctrl" onclick="copyTextToClipboard('python evaluation/compare_models.py', this)">📋 Copy</button>
+            </div>
+            <pre style="background:var(--bg-primary); padding:0.6rem; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.8rem; color:#38bdf8;">python evaluation/compare_models.py</pre>
+          </div>
+
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong>4. Generate Learning Curve</strong>
+              <button class="btn-ctrl" onclick="copyTextToClipboard('python evaluation/learning_curve.py', this)">📋 Copy</button>
+            </div>
+            <pre style="background:var(--bg-primary); padding:0.6rem; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:0.8rem; color:#38bdf8;">python evaluation/learning_curve.py</pre>
+          </div>
+        </div>
+
+        <h3>Repo Evidence Artifacts</h3>
+        <ul style="font-size:0.85rem; color:var(--text-secondary); margin-left:1.5rem; line-height:1.8;">
+          <li><code>compiler/grammar_induction.py</code>: Automatic rule discovery engine.</li>
+          <li><code>grammars/learned.lark</code>: Machine-inferred Context-Free EBNF grammar (39 productions).</li>
+          <li><code>grammars/baseline.lark</code>: Fixed reference EBNF grammar (40 productions).</li>
+          <li><code>evaluation/results/model_comparison.json</code>: Head-to-head empirical metrics.</li>
+          <li><code>data/dataset_statistics.json</code>: Relational table and query split counts.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcuts-overlay" class="shortcuts-overlay" onclick="toggleShortcutsModal(false)">
+    <div class="shortcuts-modal" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h3 style="margin:0;">⌨️ Keyboard Shortcuts</h3>
+        <button class="btn-ctrl" onclick="toggleShortcutsModal(false)">✕ Close</button>
+      </div>
+      <table style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+        <tr style="border-bottom:1px solid var(--border-color);">
+          <td style="padding:8px 0;"><span class="kbd-badge">?</span></td>
+          <td style="padding:8px 0;">Open / close this shortcuts modal</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border-color);">
+          <td style="padding:8px 0;"><span class="kbd-badge">/</span></td>
+          <td style="padding:8px 0;">Focus the SQL Query editor in Live Demo</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border-color);">
+          <td style="padding:8px 0;"><span class="kbd-badge">1</span> - <span class="kbd-badge">8</span></td>
+          <td style="padding:8px 0;">Load query presets 1 through 8 directly</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border-color);">
+          <td style="padding:8px 0;"><span class="kbd-badge">P</span></td>
+          <td style="padding:8px 0;">Toggle Presentation Slide Mode</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;"><span class="kbd-badge">←</span> / <span class="kbd-badge">→</span></td>
+          <td style="padding:8px 0;">Navigate previous / next section in Presentation Mode</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+      <div>
+        <strong class="cfg-project-title">AutoGrammar</strong> &bull; <span id="cfg-year">2025 - 2026</span><br>
+        <span id="cfg-inst">Department of Computer Science &amp; Engineering</span>
+      </div>
+      <div style="font-size:12px; text-align:right;">
+        Guide: <span id="cfg-guide">Compiler Design Review</span><br>
+        Team: <span id="cfg-team">Deepak Kumar</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Classic Scripts in Strict Non-Module Order -->
+  <script src="js/data.js"></script>
+  <script src="js/validator.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
