@@ -5,7 +5,7 @@ Performs tokenization, lexical error identification, and token category labeling
 
 import re
 from typing import List, Tuple
-from compiler.token_types import Token, TokenType, SQL_KEYWORDS
+from compiler.token_types import Token, TokenType, SQL_KEYWORDS, AGGREGATE_FUNCS
 
 
 class LexicalError(Exception):
@@ -24,10 +24,13 @@ class SqlLexer:
 
     # Token specification ordered by precedence
     TOKEN_SPEC = [
+        # Comments (skipped)
+        ("COMMENT_SINGLE", r"--[^\r\n]*"),
+        ("COMMENT_MULTI", r"/\*[\s\S]*?\*/"),
         # Whitespace (skipped)
         ("WHITESPACE", r"[ \t\r\n]+"),
-        # Single-quoted string literals
-        ("STRING", r"'([^'\\]|\\.)*'"),
+        # Single-quoted string literals (supports '' and \')
+        ("STRING", r"'([^'\\]|\\.|\'\')*'"),
         # Numbers (integers and floats)
         ("NUMBER", r"\b\d+(\.\d+)?\b"),
         # Multi-char operators
@@ -67,7 +70,7 @@ class SqlLexer:
             val = match.group()
             col = match.start() - line_start + 1
 
-            if kind == "WHITESPACE":
+            if kind in ("WHITESPACE", "COMMENT_SINGLE", "COMMENT_MULTI"):
                 # Track line numbering
                 if "\n" in val:
                     line_num += val.count("\n")
@@ -105,7 +108,9 @@ class SqlLexer:
 
             elif kind == "IDENTIFIER":
                 upper_val = val.upper()
-                if upper_val in SQL_KEYWORDS:
+                if upper_val in AGGREGATE_FUNCS:
+                    tokens.append(Token(TokenType.KEYWORD, upper_val, line_num, col, category="FUNCTION_AGGREGATE"))
+                elif upper_val in SQL_KEYWORDS:
                     tokens.append(Token(TokenType.KEYWORD, upper_val, line_num, col, category=f"KEYWORD_{upper_val}"))
                 else:
                     tokens.append(Token(TokenType.IDENTIFIER, val, line_num, col, category="IDENTIFIER"))

@@ -1,10 +1,15 @@
 {
-  "baseline_production_count": 40,
-  "learned_production_count": 39,
-  "shared_rules_count": 39,
+  "baseline_production_count": 47,
+  "learned_production_count": 47,
+  "shared_rules_count": 47,
   "shared_rules": [
     "AGG_FUNC.2",
+    "COMMENT",
     "COMP_OP.2",
+    "COUNT_FUNC.2",
+    "MULTILINE_COMMENT",
+    "REG_AGG_FUNC.2",
+    "STAR",
     "STRING",
     "aggregate_expr",
     "alias_clause",
@@ -14,6 +19,8 @@
     "column_ref",
     "comparison_predicate",
     "condition",
+    "count_expr",
+    "delete_stmt",
     "distinct_clause",
     "expr",
     "from_clause",
@@ -33,6 +40,7 @@
     "order_item",
     "orderby_clause",
     "predicate",
+    "regular_agg_expr",
     "select_item",
     "select_list",
     "select_stmt",
@@ -43,11 +51,9 @@
     "value_list",
     "where_clause"
   ],
-  "unmatched_baseline_rules": [
-    "delete_stmt"
-  ],
+  "unmatched_baseline_rules": [],
   "unmatched_learned_rules": [],
   "production_precision": 1.0,
-  "production_recall": 0.975,
-  "production_f1_score": 0.9873
+  "production_recall": 1.0,
+  "production_f1_score": 1.0
 }

@@ -1,19 +1,20 @@
 // AutoGrammar Induced Grammar (Machine-Learned from Training Corpus)
-// Inferred at: 2026-10-21T21:02:01.882763
-// Discovered statement types: INSERT_STMT, SELECT_STMT, UPDATE_STMT
+// Inferred at: 2026-10-27T18:48:09.750846
+// Discovered statement types: DELETE_STMT, INSERT_STMT, SELECT_STMT, UPDATE_STMT
 
 ?start: statement [";"]
 
 ?statement: select_stmt
           | insert_stmt
           | update_stmt
+          | delete_stmt
 
 select_stmt: "SELECT"i [distinct_clause] select_list from_clause [where_clause] [groupby_clause] [having_clause] [orderby_clause] [limit_clause]
 distinct_clause: "DISTINCT"i
 select_list: select_item ("," select_item)*
 select_item: aggregate_expr [alias_clause]
            | column_ref [alias_clause]
-           | "*"
+           | STAR
 alias_clause: ["AS"i] CNAME
 
 from_clause: "FROM"i table_source (join_clause)*
@@ -42,9 +43,11 @@ null_predicate: expr "IS"i ["NOT"i] "NULL"i
      | column_ref
      | literal
      | "(" select_stmt ")" -> scalar_subquery
-AGG_FUNC.2: /(?i:AVG|MAX|MIN)/
-aggregate_expr: AGG_FUNC "(" (column_ref | "*" | literal) ")"
-column_ref: [CNAME "."] (CNAME | "*")
+aggregate_expr: count_expr
+              | regular_agg_expr
+count_expr: COUNT_FUNC "(" (STAR | column_ref | literal) ")"
+regular_agg_expr: REG_AGG_FUNC "(" (column_ref | literal) ")"
+column_ref: CNAME "." (CNAME | STAR) | CNAME
 literal_list: literal ("," literal)*
 ?literal: NUMBER | STRING
 
@@ -62,9 +65,19 @@ value_list: literal ("," literal)*
 update_stmt: "UPDATE"i CNAME "SET"i set_assignment ("," set_assignment)* [where_clause]
 set_assignment: CNAME "=" literal
 
+delete_stmt: "DELETE"i "FROM"i CNAME [where_clause]
+
+COUNT_FUNC.2: /(?i:COUNT)/
+REG_AGG_FUNC.2: /(?i:AVG|MAX|MIN|SUM)/
+AGG_FUNC.2: /(?i:AVG|COUNT|MAX|MIN|SUM)/
 COMP_OP.2: "<=" | ">=" | "!=" | "<>" | "=" | "<" | ">"
+STAR: "*"
 %import common.CNAME
 %import common.NUMBER
-STRING: /'([^'\\]|\\.)*'/
+STRING: /'([^'\\]|\\.|\'\')*'/
+COMMENT: /--[^\r\n]*/
+MULTILINE_COMMENT: /\/\*[\s\S]*?\*\//
 %import common.WS
 %ignore WS
+%ignore COMMENT
+%ignore MULTILINE_COMMENT

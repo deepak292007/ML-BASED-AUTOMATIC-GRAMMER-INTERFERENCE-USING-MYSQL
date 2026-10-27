@@ -1,0 +1,21 @@
+{
+  "baseline_lr": {
+    "model_type": "TF-IDF (1-3 ngrams) + Logistic Regression (C=1.0)",
+    "accuracy": 0.6922549691569568,
+    "f1_score": 0.7735753908219869,
+    "roc_auc": 0.7910524835749162
+  },
+  "improved_lr": {
+    "model_type": "Structural Features + Logistic Regression (C=0.1)",
+    "accuracy": 0.7080191912268677,
+    "f1_score": 0.8111702127659575,
+    "roc_auc": 0.8495475113122172
+  },
+  "linear_svm": {
+    "model_type": "Structural Features + Linear SVM (C=0.05)",
+    "accuracy": 0.7888965044551063,
+    "f1_score": 0.8559401309635173,
+    "roc_auc": 0.8352187028657616
+  },
+  "selected_best_model": "linear_svm"
+}

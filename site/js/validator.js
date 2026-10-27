@@ -710,25 +710,6 @@ function parseQuery(query, grammarMode = "learned", sessionRefined = false) {
       }
     }
 
-    // Check for unobserved constructs in learned grammar mode (COUNT, SUM if not refined)
-    if (grammarMode === "learned" && !sessionRefined) {
-      for (const t of tokens) {
-        if (t.type === "KEYWORD" && (t.value === "COUNT" || t.value === "SUM")) {
-          return {
-            valid: false,
-            stage: "Stage 2 (Parser)",
-            phase: "SYNTAX",
-            line: t.line,
-            column: t.column,
-            message: `Syntax error: Unexpected token '${t.value}'. Inferred EBNF rule AGG_FUNC.2 only recognizes: /(?i:AVG|MAX|MIN)/.`,
-            suggestion: "Refine grammar in Refinement Sandbox to add COUNT/SUM to AGG_FUNC, or test in Baseline mode.",
-            tokens,
-            asciiTree: ""
-          };
-        }
-      }
-    }
-
     // Build ASCII parse tree representation
     const treeLines = ["select_stmt", "├── SELECT"];
     
@@ -1072,11 +1053,26 @@ function evaluateQueryMultiSystem(query, sessionRefined = false) {
   // 4. ML Classifier
   const mlVerdict = predictMlClassifierJs(query);
 
+  const compilerAccepted = baseVerdict.valid;
+  const mlAccepted = mlVerdict ? mlVerdict.valid : false;
+  let mlOverrideMsg = null;
+  if (compilerAccepted && !mlAccepted) {
+    mlOverrideMsg = "The compiler accepts this query. The experimental ML classifier disagrees and predicts REJECT. The ML prediction does not override compiler validation.";
+  } else if (!compilerAccepted && mlAccepted) {
+    mlOverrideMsg = "The compiler rejects this query. The experimental ML classifier predicts ACCEPT. The ML prediction does not override compiler validation.";
+  }
+
   return {
     isPreset: false,
+    compiler_valid: compilerAccepted,
+    learned_valid: learnVerdict.valid,
+    grammar_disagreement: (baseVerdict.valid !== learnVerdict.valid),
+    ml_disagreement: (compilerAccepted !== mlAccepted),
+    ml_override_message: mlOverrideMsg,
     baseline: baseVerdict,
     learned: learnVerdict,
     ml: mlVerdict,
-    tokens: parseLearn.tokens || parseBase.tokens || []
+    tokens: parseLearn.tokens || parseBase.tokens || [],
+    safe_to_execute: compilerAccepted
   };
 }

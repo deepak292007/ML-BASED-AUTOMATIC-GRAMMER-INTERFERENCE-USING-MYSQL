@@ -67,7 +67,7 @@ class AutoGrammarParser:
                 "grammar_choice": grammar_choice,
                 "tree": None,
                 "ascii_tree": "",
-                "diagnostics": [CompilerDiagnostic("COMPILER", f"Failed to initialize {grammar_choice} parser: {str(e)}")],
+                "diagnostics": [CompilerDiagnostic("BACKEND", f"Failed to initialize {grammar_choice} parser: {str(e)}")],
                 "semantics": {}
             }
 
@@ -96,7 +96,7 @@ class AutoGrammarParser:
                 "semantics": {}
             }
         except Exception as e:
-            diag = CompilerDiagnostic("SYNTAX", f"Unexpected parsing error: {str(e)}")
+            diag = CompilerDiagnostic("BACKEND", f"Unexpected parsing error: {str(e)}")
             return {
                 "success": False,
                 "grammar_choice": grammar_choice,

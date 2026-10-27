@@ -1,6 +1,6 @@
-template_percentage,fraction,template_count,training_query_count,accuracy,tpr,tnr,far,frr,tp,tn,fp,fn
-10,0.1,3,320,0.7906,0.7143,1.0,0.0,0.2857,600,306,0,240
-25,0.25,7,800,0.7906,0.7143,1.0,0.0,0.2857,600,306,0,240
-50,0.5,14,1640,0.7906,0.7143,1.0,0.0,0.2857,600,306,0,240
-75,0.75,22,2600,0.7906,0.7143,1.0,0.0,0.2857,600,306,0,240
-100,1.0,29,3440,0.8953,0.8571,1.0,0.0,0.1429,720,306,0,120
+template_percentage,fraction,template_count,training_query_count,grammar_file,grammar_char_length,grammar_rule_count,discovered_statement_types,observed_clauses,identical_to_previous_grammar,accuracy,tpr,tnr,far,frr,tp,tn,fp,fn
+10,0.1,3,320,evaluation\results\grammars\learning_curve_10pct.lark,1421,26,['SELECT_STMT'],"['AND', 'BETWEEN', 'FROM', 'IS', 'NULL', 'SELECT', 'WHERE']",False,0.7906,0.7143,1.0,0.0,0.2857,600,306,0,240
+25,0.25,7,800,evaluation\results\grammars\learning_curve_25pct.lark,1707,29,"['SELECT_STMT', 'UPDATE_STMT']","['AND', 'AS', 'AVG', 'BETWEEN', 'FROM', 'INNER', 'IS', 'JOIN', 'LEFT', 'NULL', 'ON', 'SELECT', 'SET', 'UPDATE', 'WHERE']",False,0.7906,0.7143,1.0,0.0,0.2857,600,306,0,240
+50,0.5,14,1640,evaluation\results\grammars\learning_curve_50pct.lark,1913,32,"['SELECT_STMT', 'UPDATE_STMT']","['AND', 'AS', 'ASC', 'AVG', 'BETWEEN', 'BY', 'DISTINCT', 'FROM', 'IN', 'INNER', 'IS', 'JOIN', 'LEFT', 'NOT', 'NULL', 'ON', 'ORDER', 'SELECT', 'SET', 'UPDATE', 'WHERE']",False,0.7906,0.7143,1.0,0.0,0.2857,600,306,0,240
+75,0.75,22,2600,evaluation\results\grammars\learning_curve_75pct.lark,2232,37,"['INSERT_STMT', 'SELECT_STMT', 'UPDATE_STMT']","['AND', 'AS', 'ASC', 'AVG', 'BETWEEN', 'BY', 'DESC', 'DISTINCT', 'FROM', 'IN', 'INNER', 'INSERT', 'INTO', 'IS', 'JOIN', 'LEFT', 'LIKE', 'LIMIT', 'MAX', 'MIN', 'NOT', 'NULL', 'ON', 'ORDER', 'SELECT', 'SET', 'UPDATE', 'VALUES', 'WHERE']",False,0.7906,0.7143,1.0,0.0,0.2857,600,306,0,240
+100,1.0,29,3440,evaluation\results\grammars\learning_curve_100pct.lark,2383,40,"['INSERT_STMT', 'SELECT_STMT', 'UPDATE_STMT']","['AND', 'AS', 'ASC', 'AVG', 'BETWEEN', 'BY', 'DESC', 'DISTINCT', 'FROM', 'GROUP', 'HAVING', 'IN', 'INNER', 'INSERT', 'INTO', 'IS', 'JOIN', 'LEFT', 'LIKE', 'LIMIT', 'MAX', 'MIN', 'NOT', 'NULL', 'ON', 'OR', 'ORDER', 'SELECT', 'SET', 'UPDATE', 'VALUES', 'WHERE']",False,0.8953,0.8571,1.0,0.0,0.1429,720,306,0,120

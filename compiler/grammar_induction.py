@@ -212,7 +212,7 @@ class GrammarInductionEngine:
         ebnf_lines.append("select_stmt: " + " ".join(sel_clauses))
         ebnf_lines.append("distinct_clause: \"DISTINCT\"i")
         ebnf_lines.append("select_list: select_item (\",\" select_item)*")
-        ebnf_lines.append("select_item: aggregate_expr [alias_clause]\n           | column_ref [alias_clause]\n           | \"*\"")
+        ebnf_lines.append("select_item: aggregate_expr [alias_clause]\n           | column_ref [alias_clause]\n           | STAR")
         ebnf_lines.append("alias_clause: [\"AS\"i] CNAME")
         ebnf_lines.append("")
 
@@ -269,10 +269,10 @@ class GrammarInductionEngine:
             expr_lines.append("     | \"(\" select_stmt \")\" -> scalar_subquery")
         ebnf_lines.append("\n".join(expr_lines))
 
-        func_pat = "|".join(sorted(self.observed_functions)) if self.observed_functions else "COUNT|SUM|AVG|MIN|MAX"
-        ebnf_lines.append(f"AGG_FUNC.2: /(?i:{func_pat})/")
-        ebnf_lines.append("aggregate_expr: AGG_FUNC \"(\" (column_ref | \"*\" | literal) \")\"")
-        ebnf_lines.append("column_ref: [CNAME \".\"] (CNAME | \"*\")")
+        ebnf_lines.append("aggregate_expr: count_expr\n              | regular_agg_expr")
+        ebnf_lines.append("count_expr: COUNT_FUNC \"(\" (STAR | column_ref | literal) \")\"")
+        ebnf_lines.append("regular_agg_expr: REG_AGG_FUNC \"(\" (column_ref | literal) \")\"")
+        ebnf_lines.append("column_ref: CNAME \".\" (CNAME | STAR) | CNAME")
         ebnf_lines.append("literal_list: literal (\",\" literal)*")
         ebnf_lines.append("?literal: NUMBER | STRING")
         ebnf_lines.append("")
@@ -305,12 +305,26 @@ class GrammarInductionEngine:
             ebnf_lines.append("")
 
         # 8. Terminals
+        ebnf_lines.append("COUNT_FUNC.2: /(?i:COUNT)/")
+        reg_funcs = set(self.observed_functions) - {"COUNT"}
+        if self.has_aggregates or not reg_funcs:
+            reg_funcs.update({"SUM", "AVG", "MIN", "MAX"})
+        reg_pat = "|".join(sorted(reg_funcs))
+        ebnf_lines.append(f"REG_AGG_FUNC.2: /(?i:{reg_pat})/")
+        all_funcs = sorted(set(self.observed_functions) | {"COUNT", "SUM", "AVG", "MIN", "MAX"})
+        all_pat = "|".join(all_funcs)
+        ebnf_lines.append(f"AGG_FUNC.2: /(?i:{all_pat})/")
         ebnf_lines.append("COMP_OP.2: \"<=\" | \">=\" | \"!=\" | \"<>\" | \"=\" | \"<\" | \">\"")
+        ebnf_lines.append("STAR: \"*\"")
         ebnf_lines.append("%import common.CNAME")
         ebnf_lines.append("%import common.NUMBER")
-        ebnf_lines.append("STRING: /'([^'\\\\]|\\\\.)*'/")
+        ebnf_lines.append("STRING: /'([^'\\\\]|\\\\.|\\'\\')*'/")
+        ebnf_lines.append("COMMENT: /--[^\\r\\n]*/")
+        ebnf_lines.append("MULTILINE_COMMENT: /\\/\\*[\\s\\S]*?\\*\\//")
         ebnf_lines.append("%import common.WS")
         ebnf_lines.append("%ignore WS")
+        ebnf_lines.append("%ignore COMMENT")
+        ebnf_lines.append("%ignore MULTILINE_COMMENT")
 
         return "\n".join(ebnf_lines)
 

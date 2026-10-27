@@ -1,4 +1,7 @@
-System / Paradigm,Technique,Accuracy,Valid Acceptance (Recall),Invalid Rejection (Specificity),False Acceptance (FAR),False Rejection (FRR),Grammar Rule Precision,Grammar Rule Recall,Generates Parse Tree
-Fixed Baseline Grammar (Compiler Reference),Manually Authored EBNF + Earley/LALR Parser,1.0,1.0,1.0,0.0,0.0,1.0,1.0,Yes (Deterministic)
-AutoGrammar Learned Grammar (Induction),Structural Pattern Mining + Dynamic EBNF Synthesis,0.8953,0.8571,1.0,0.0,0.1429,1.0,0.975,Yes (Deterministic)
-ML Statistical Baseline Classifier,TF-IDF (1-3 n-grams) + Logistic Regression,0.6666666666666666,0.8511904761904762,0.1601,0.8399,0.1488,N/A (Black-box),N/A (Black-box),No
+System / Paradigm,Technique,Accuracy,Valid Acceptance (Recall),Invalid Rejection (Specificity),False Acceptance (FAR),False Rejection (FRR),ROC-AUC,PR-AUC,Macro F1,Grammar Rule Precision,Grammar Rule Recall,Generates Parse Tree
+Fixed Baseline Grammar (Compiler Reference),Manually Authored EBNF + Earley/LALR Parser,0.947,1.0,0.8333,0.1667,0.0,0.9167,0.928,0.9359,1.0,1.0,Yes (Deterministic 100%)
+AutoGrammar Learned Grammar (Induction),Structural Pattern Mining + Dynamic EBNF Synthesis,0.947,1.0,0.8333,0.1667,0.0,0.9167,0.928,0.9359,1.0,1.0,Yes (Deterministic 100% on Accepted)
+ML Alternative: Linear SVM (Best ML Model),Abstracted Tokens + Structural Syntax Features + Linear SVM,0.8779174147217235,0.9763157894736842,0.6667,0.3333333333333333,0.02368421052631579,0.9201754385964913,0.9580125090398153,0.8461825860948669,N/A (Statistical Boundary),N/A (Statistical Boundary),No
+ML Improved: Logistic Regression,Abstracted Tokens + Structural Syntax Features + Logistic Regression,0.9470377019748654,1.0,0.8333,0.16666666666666666,0.0,0.9328947368421053,0.9655175314916642,0.9358627439691405,N/A (Statistical Boundary),N/A (Statistical Boundary),No
+Majority-Class Baseline,Trivial Baseline (Predicts All Queries Valid / 1),0.6822262118491921,1.0,0.0,1.0,0.0,0.5,0.6822262118491921,0.4055496264674493,N/A (Trivial),N/A (Trivial),No
+ML Original Baseline: Logistic Regression,Raw TF-IDF (1-3 n-grams) + Logistic Regression (C=1.0),0.7737881508078994,0.9789473684210527,0.3333,0.6666666666666666,0.021052631578947368,0.9102215283972643,0.9632106331056853,0.6693894855850764,N/A (Black-box),N/A (Black-box),No

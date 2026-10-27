@@ -198,8 +198,8 @@ if "Page A" in selected_page:
 
     with c4:
         val_ml = "Trained" if model_trained else "Not Trained"
-        sub_ml = "TF-IDF + Logistic Reg." if model_trained else "Train in ML Page"
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">ML Baseline Model</div>
+        sub_ml = "Linear SVM & LR" if model_trained else "Train in ML Page"
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">ML Models</div>
         <div class="metric-value">{val_ml}</div><div>{sub_ml}</div></div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -467,18 +467,18 @@ elif "Page D" in selected_page:
 
 # ==================== PAGE E: ML MODEL ====================
 elif "Page E" in selected_page:
-    st.title("🤖 ML Baseline Classifier")
-    st.markdown("Empirical statistical baseline model (**TF-IDF 1-3 n-grams + Logistic Regression**).")
+    st.title("🤖 ML Classifiers & Empirical Comparison")
+    st.markdown("Empirical statistical baseline and structural validity models (**Linear SVM & Logistic Regression**).")
 
-    st.info("💡 **Academic Note**: Statistical classifiers recognize frequent token co-occurrences but lack recursive grammar rules. As demonstrated in benchmarking, they cannot replace formal grammar induction or deterministic syntax parsing.")
+    st.info("💡 **Academic Note**: Statistical classifiers recognize token co-occurrences and structural counts but lack recursive grammar rules. As demonstrated in benchmarking, they cannot construct ASTs, localize syntax errors, or replace formal grammar induction.")
 
     c_tr1, c_tr2 = st.columns([1, 1])
     with c_tr1:
-        if st.button("🚀 Train Baseline Classifier", use_container_width=True):
-            with st.spinner("Vectorizing SQL tokens and training Logistic Regression..."):
+        if st.button("🚀 Train Validity Classifiers", use_container_width=True):
+            with st.spinner("Training baseline LR, improved LR, and Linear SVM models..."):
                 try:
                     train_baseline_model()
-                    st.success("Model trained and saved to ml/saved_models/!")
+                    st.success("Models trained and saved to ml/saved_models/!")
                 except Exception as e:
                     st.error(f"Training error: {e}")
 
@@ -497,7 +497,8 @@ elif "Page E" in selected_page:
         with open(test_metrics_file, "r", encoding="utf-8") as f:
             m = json.load(f)
 
-        st.subheader("Held-Out Test Set Results (1,146 Unseen Queries)")
+        model_type_str = m.get("model_type", "Primary Model")
+        st.subheader(f"Held-Out Test Set Results ({model_type_str})")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Accuracy", f"{m['accuracy']*100:.2f}%")
         c2.metric("Precision", f"{m['precision']*100:.2f}%")
@@ -505,14 +506,14 @@ elif "Page E" in selected_page:
         c4.metric("F1-Score", f"{m['f1_score']*100:.2f}%")
 
         cm = m["confusion_matrix"]
-        st.markdown("#### Confusion Matrix")
+        st.markdown("#### Confusion Matrix (Primary Model)")
         cm_df = pd.DataFrame([
             {"Predicted": "Predicted Invalid (0)", "Actual Invalid (0)": cm["true_negative"], "Actual Valid (1)": cm["false_negative"]},
             {"Predicted": "Predicted Valid (1)", "Actual Invalid (0)": cm["false_positive"], "Actual Valid (1)": cm["true_positive"]}
         ]).set_index("Predicted")
         st.table(cm_df)
 
-        st.caption(f"**False Acceptance Warning**: The ML classifier falsely accepted **{cm['false_positive']} invalid queries** (FAR = {cm['false_positive']/m['invalid_count']*100:.1f}%) because bag-of-tokens features ignore syntax order!")
+        st.caption(f"**False Acceptance Warning**: The ML classifier falsely accepted **{cm['false_positive']} invalid queries** (FAR = {cm['false_positive']/m['invalid_count']*100:.1f}%). Statistical boundaries lack deterministic grammatical sequencing.")
     else:
         st.warning("Classifier has not been evaluated yet. Click 'Evaluate on Held-Out Test Set' above.")
 

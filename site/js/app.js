@@ -456,13 +456,68 @@ function insertTextAtCursor(text) {
   editor.focus();
 }
 
-function runPlaygroundEvaluation(preset) {
+// ===========================================================================
+// PYTHON COMPILER BACKEND INTEGRATION
+// ===========================================================================
+let BACKEND_ONLINE = false;
+let BACKEND_INFO = null;
+
+function getApiBase() {
+  if (window.CUSTOM_API_BASE) return window.CUSTOM_API_BASE;
+  const loc = window.location;
+  if (loc.protocol.startsWith("http")) {
+    return loc.origin;
+  }
+  return "http://127.0.0.1:8000";
+}
+
+async function checkBackendHealth() {
+  const indicator = document.getElementById("backend-status-indicator");
+  const candidates = [
+    getApiBase(),
+    "http://127.0.0.1:8000",
+    "http://localhost:8000"
+  ];
+  const uniqueUrls = Array.from(new Set(candidates));
+
+  for (const baseUrl of uniqueUrls) {
+    try {
+      const res = await fetch(`${baseUrl}/api/health`, {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+        cache: "no-store"
+      });
+      if (res.ok) {
+        const data = await res.json();
+        BACKEND_ONLINE = true;
+        BACKEND_INFO = data;
+        window.CUSTOM_API_BASE = baseUrl;
+        if (indicator) {
+          indicator.className = "badge badge-accept";
+          indicator.innerHTML = "● Python Compiler Online (Lark)";
+          indicator.title = `Connected to Python backend at ${baseUrl} with Lark parser.`;
+        }
+        return data;
+      }
+    } catch (e) {
+      // Continue searching
+    }
+  }
+
+  BACKEND_ONLINE = false;
+  BACKEND_INFO = null;
+  if (indicator) {
+    indicator.className = "badge badge-warn";
+    indicator.innerHTML = "● Compiler Offline (Simulation Mode)";
+    indicator.title = "Python backend server (server.py) not detected. Using client-side simulation.";
+  }
+  return null;
+}
+
+async function runPlaygroundEvaluation(preset) {
   const editor = document.getElementById("sql-editor-input");
   if (!editor) return;
   const query = editor.value.trim();
-
-  // Evaluate query across 3 systems
-  const evalResult = evaluateQueryMultiSystem(query, STATE.sessionGrammarRefined);
 
   // Record history
   if (query && !STATE.queryHistory.includes(query)) {
@@ -471,18 +526,104 @@ function runPlaygroundEvaluation(preset) {
     renderQueryHistory();
   }
 
+  let evalResult = null;
+  let isBackendResult = false;
+  let realExecResult = null;
+
+  // Try real Python backend first
+  if (BACKEND_ONLINE) {
+    try {
+      const resp = await fetch(`${getApiBase()}/api/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: query, grammar_choice: "both" })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        evalResult = {
+          isBackend: true,
+          source: data.source,
+          compiler_valid: data.compiler_valid,
+          learned_valid: data.learned_valid,
+          grammar_disagreement: data.grammar_disagreement,
+          ml_disagreement: data.ml_disagreement,
+          ml_override_message: data.ml_override_message,
+          baseline: data.baseline,
+          learned: data.learned,
+          ml: data.ml,
+          tokens: data.tokens,
+          safe_to_execute: data.safe_to_execute
+        };
+        isBackendResult = true;
+
+        // If query is valid and read-only SELECT, run safe execution
+        if (data.safe_to_execute) {
+          try {
+            const execResp = await fetch(`${getApiBase()}/api/execute`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query: query, max_rows: 50 })
+            });
+            if (execResp.ok) {
+              realExecResult = await execResp.json();
+            }
+          } catch (e) {
+            console.warn("Execution request error:", e);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Backend request failed, falling back to offline simulation:", e);
+      BACKEND_ONLINE = false;
+      const indicator = document.getElementById("backend-status-indicator");
+      if (indicator) {
+        indicator.className = "badge badge-warn";
+        indicator.innerHTML = "● Compiler Offline (Simulation Mode)";
+      }
+    }
+  }
+
+  // Fallback to offline evaluation
+  if (!evalResult) {
+    evalResult = evaluateQueryMultiSystem(query, STATE.sessionGrammarRefined);
+  }
+
   // 1. Render Verdict Source Tag Banner
   const sourceTagBox = document.getElementById("verdict-source-banner");
   if (sourceTagBox) {
-    if (evalResult.isPreset) {
+    let mlOverrideBanner = "";
+    if (evalResult.ml_override_message) {
+      mlOverrideBanner = `<div class="badge badge-warn" style="margin-top:8px; display:block; white-space:normal; line-height:1.4;">ℹ️ ${escapeHtml(evalResult.ml_override_message)}</div>`;
+    }
+
+    if (isBackendResult) {
+      let disagreeBadge = "";
+      if (evalResult.grammar_disagreement) {
+        disagreeBadge = `<span class="badge badge-warn" style="margin-left:8px;">⚠️ Disagreement: Baseline accepts, Learned rejects</span>`;
+      }
       sourceTagBox.innerHTML = `
-        <span class="badge badge-info">Source: Precomputed (real Python/Lark result)</span>
-        <span style="font-size:12px; color:#94a3b8; margin-left:8px;">Preset: <strong>${evalResult.presetName}</strong> (${evalResult.presetTag})</span>
+        <div>
+          <span class="badge badge-accept">Source: Real Python Compiler (Lark Earley Parser &amp; Pipeline)</span>
+          ${disagreeBadge}
+          <span style="font-size:12px; color:#94a3b8; margin-left:8px;">Validated through Security Gate &rarr; Lexer &rarr; Lark EBNF &rarr; Semantic Checker</span>
+        </div>
+        ${mlOverrideBanner}
+      `;
+    } else if (evalResult.isPreset) {
+      sourceTagBox.innerHTML = `
+        <div>
+          <span class="badge badge-info">Source: Precomputed Benchmark (Exact Python/Lark Verdict)</span>
+          <span style="font-size:12px; color:#94a3b8; margin-left:8px;">Preset: <strong>${evalResult.presetName}</strong> (${evalResult.presetTag})</span>
+        </div>
+        ${mlOverrideBanner}
       `;
     } else {
       sourceTagBox.innerHTML = `
-        <span class="badge badge-warn">Source: Browser simulation (JS re-implementation, not the Lark parser)</span>
-        <span style="font-size:12px; color:#94a3b8; margin-left:8px;">Simulating 4 compiler stages and offline TF-IDF scoring in JavaScript.</span>
+        <div>
+          <span class="badge badge-warn">Backend Offline (Offline Simulation Mode)</span>
+          <span style="font-size:12px; color:#94a3b8; margin-left:8px;">Python backend is offline. Start via <code>python server.py</code> to connect the real Lark compiler. Showing client-side simulation.</span>
+        </div>
+        ${mlOverrideBanner}
       `;
     }
   }
@@ -515,12 +656,12 @@ function runPlaygroundEvaluation(preset) {
   // 3. Render 3 Verdict Columns
   renderVerdictColumn("verdict-col-baseline", evalResult.baseline, "#38bdf8", "Fixed Baseline Grammar");
   renderVerdictColumn("verdict-col-learned", evalResult.learned, "#10b981", `Learned Grammar ${STATE.sessionGrammarRefined ? '(Session Refined)' : '(learned.lark)'}`);
-  renderVerdictColumn("verdict-col-ml", evalResult.ml, "#a855f7", "ML Classifier (TF-IDF + LogReg)");
+  renderVerdictColumn("verdict-col-ml", evalResult.ml, "#a855f7", `ML Model: ${evalResult.ml ? (evalResult.ml.model_type || 'Statistical') : 'ML'}`);
 
   // 4. Render Inspection Tabs (Tokens, Parse Tree, Database)
   renderTokensTab(evalResult.tokens || []);
   renderParseTreeTab(evalResult.learned.ascii_tree || evalResult.baseline.ascii_tree || "");
-  renderDatabaseTab(evalResult.learned.valid || evalResult.baseline.valid, query);
+  renderDatabaseTab(evalResult.learned.valid || evalResult.baseline.valid, query, realExecResult);
 }
 
 function renderVerdictColumn(containerId, res, accentColor, title) {
@@ -592,7 +733,7 @@ function renderParseTreeTab(asciiTree) {
   }
 }
 
-function renderDatabaseTab(isValid, query) {
+function renderDatabaseTab(isValid, query, realExecResult) {
   const container = document.getElementById("database-tab-container");
   if (!container) return;
 
@@ -602,37 +743,71 @@ function renderDatabaseTab(isValid, query) {
   if (!isValid) {
     container.innerHTML = `
       <div style="background:#7f1d1d; border:1px solid #dc2626; padding:12px; border-radius:6px; color:#fca5a5; font-size:0.85rem;">
-        ⛔ Database Execution Blocked: Query failed compiler validation. Only queries passing Stages 0–3 may execute on the relational sandbox.
+        ⛔ Database Execution Blocked: Query failed compiler validation. Rejected queries are strictly forbidden from executing.
       </div>
     `;
-  } else if (!isSelect) {
+    return;
+  }
+
+  if (!isSelect) {
     container.innerHTML = `
       <div style="background:#78350f; border:1px solid #d97706; padding:12px; border-radius:6px; color:#fde68a; font-size:0.85rem;">
-        ⚠️ Execution Safeguard: Only read-only SELECT queries are executed in the interactive sandbox.
+        ⚠️ Execution Safeguard: Only read-only SELECT queries are executed in the interactive sandbox to protect database integrity.
       </div>
     `;
-  } else {
-    container.innerHTML = `
-      <div style="background:#064e3b; border:1px solid #059669; padding:12px; border-radius:6px; color:#a7f3d0; font-size:0.85rem; margin-bottom:12px;">
-        ✓ Validation Succeeded! Executing read-only SELECT on In-Memory Relational Sandbox (SQLite loaded with 10k school records)...
-      </div>
-      <table class="data-table" style="width:100%;">
-        <thead>
-          <tr>
-            <th>first_name</th><th>last_name</th><th>marks_obtained</th><th>state</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>Aarav</td><td>Sharma</td><td>92.50</td><td>Karnataka</td></tr>
-          <tr><td>Diya</td><td>Patel</td><td>88.00</td><td>Maharashtra</td></tr>
-          <tr><td>Ishaan</td><td>Reddy</td><td>95.00</td><td>Telangana</td></tr>
-          <tr><td>Ananya</td><td>Verma</td><td>86.50</td><td>Delhi</td></tr>
-          <tr><td>Vihaan</td><td>Nair</td><td>91.00</td><td>Kerala</td></tr>
-        </tbody>
-      </table>
-      <div style="font-size:11px; color:#94a3b8; margin-top:8px;">Showing top 5 of 50 maximum sandbox records.</div>
-    `;
+    return;
   }
+
+  if (realExecResult) {
+    if (realExecResult.success) {
+      const cols = realExecResult.columns || [];
+      const rows = realExecResult.rows || [];
+      const engine = realExecResult.engine || "Relational Sandbox";
+      const rowCount = realExecResult.row_count || rows.length;
+
+      let tableHtml = `
+        <div style="background:#064e3b; border:1px solid #059669; padding:12px; border-radius:6px; color:#a7f3d0; font-size:0.85rem; margin-bottom:12px;">
+          ✓ Query Executed Successfully on <strong>${escapeHtml(engine)}</strong> (Returned ${rowCount} rows)
+        </div>
+      `;
+
+      if (rows.length === 0) {
+        tableHtml += `<p style="color:#94a3b8; font-size:0.85rem;">Query executed successfully. 0 rows returned matching criteria.</p>`;
+      } else {
+        tableHtml += `
+          <div style="max-height:350px; overflow-y:auto;">
+            <table class="data-table" style="width:100%;">
+              <thead>
+                <tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>
+              </thead>
+              <tbody>
+                ${rows.slice(0, 50).map(r => `
+                  <tr>${cols.map(c => `<td>${escapeHtml(r[c] !== undefined && r[c] !== null ? r[c] : "")}</td>`).join("")}</tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+          <div style="font-size:11px; color:#94a3b8; margin-top:8px;">Displaying ${Math.min(rows.length, 50)} of ${rowCount} records returned from active database.</div>
+        `;
+      }
+      container.innerHTML = tableHtml;
+      return;
+    } else {
+      container.innerHTML = `
+        <div style="background:#7f1d1d; border:1px solid #dc2626; padding:12px; border-radius:6px; color:#fca5a5; font-size:0.85rem;">
+          ❌ Database Execution Error: ${escapeHtml(realExecResult.error || "Execution failed.")}
+        </div>
+      `;
+      return;
+    }
+  }
+
+  // If backend is offline or execution not run
+  container.innerHTML = `
+    <div style="background:#1e293b; border:1px solid #334155; padding:12px; border-radius:6px; color:#94a3b8; font-size:0.85rem;">
+      ℹ️ Database Execution Sandbox: Start the Python backend (<code>python server.py</code>) to execute read-only queries against the live SQLite relational sandbox (10k records).
+    </div>
+  `;
 }
 
 function renderQueryHistory() {
@@ -1013,4 +1188,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (typeof initAllCharts === "function") {
     initAllCharts();
   }
+
+  // Probe real Python compiler backend status
+  checkBackendHealth().then(() => {
+    if (BACKEND_ONLINE) {
+      runPlaygroundEvaluation();
+    }
+  });
 });

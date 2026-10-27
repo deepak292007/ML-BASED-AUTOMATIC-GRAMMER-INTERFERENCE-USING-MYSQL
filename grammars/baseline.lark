@@ -17,7 +17,7 @@ select_list: select_item ("," select_item)*
 
 select_item: aggregate_expr [alias_clause]
            | column_ref [alias_clause]
-           | "*"
+           | STAR
 
 alias_clause: ["AS"i] CNAME
 
@@ -62,9 +62,13 @@ null_predicate: expr "IS"i ["NOT"i] "NULL"i
      | literal
      | "(" select_stmt ")" -> scalar_subquery
 
-aggregate_expr: AGG_FUNC "(" (column_ref | "*" | literal) ")"
+aggregate_expr: count_expr
+              | regular_agg_expr
 
-column_ref: [CNAME "."] (CNAME | "*")
+count_expr: COUNT_FUNC "(" (STAR | column_ref | literal) ")"
+regular_agg_expr: REG_AGG_FUNC "(" (column_ref | literal) ")"
+
+column_ref: CNAME "." (CNAME | STAR) | CNAME
 
 literal_list: literal ("," literal)*
 
@@ -95,11 +99,18 @@ set_assignment: CNAME "=" literal
 delete_stmt: "DELETE"i "FROM"i CNAME [where_clause]
 
 // --- TERMINALS ---
+COUNT_FUNC.2: /(?i:COUNT)/
+REG_AGG_FUNC.2: /(?i:SUM|AVG|MIN|MAX)/
 AGG_FUNC.2: /(?i:COUNT|SUM|AVG|MIN|MAX)/
 COMP_OP.2: "<=" | ">=" | "!=" | "<>" | "=" | "<" | ">"
+STAR: "*"
 
 %import common.CNAME
 %import common.NUMBER
-STRING: /'([^'\\]|\\.)*'/
+STRING: /'([^'\\]|\\.|\'\')*'/
+COMMENT: /--[^\r\n]*/
+MULTILINE_COMMENT: /\/\*[\s\S]*?\*\//
 %import common.WS
 %ignore WS
+%ignore COMMENT
+%ignore MULTILINE_COMMENT

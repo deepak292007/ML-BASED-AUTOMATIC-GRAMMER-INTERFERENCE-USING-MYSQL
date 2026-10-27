@@ -101,74 +101,24 @@ def build_site_data():
     print(f"    Discovered {len(false_rejections)} false rejections in test.csv.")
 
     # 5. Schema extraction
-    schema_sql_path = PROJECT_ROOT / "database" / "schema.sql"
-    schema_info = {
-        "subjects": {
-            "columns": [
-                {"name": "subject_id", "type": "INT", "pk": True, "fk": None, "desc": "Unique subject identifier"},
-                {"name": "subject_name", "type": "VARCHAR(100)", "pk": False, "fk": None, "desc": "Subject title"}
-            ]
-        },
-        "teachers": {
-            "columns": [
-                {"name": "teacher_id", "type": "INT", "pk": True, "fk": None, "desc": "Unique teacher ID"},
-                {"name": "first_name", "type": "VARCHAR(50)", "pk": False, "fk": None, "desc": "Given name"},
-                {"name": "last_name", "type": "VARCHAR(50)", "pk": False, "fk": None, "desc": "Family name"},
-                {"name": "subject_id", "type": "INT", "pk": False, "fk": "subjects.subject_id", "desc": "Specialization"}
-            ]
-        },
-        "classes": {
-            "columns": [
-                {"name": "class_id", "type": "INT", "pk": True, "fk": None, "desc": "Unique class level (1-7)"},
-                {"name": "class_name", "type": "VARCHAR(50)", "pk": False, "fk": None, "desc": "E.g. Class 5"},
-                {"name": "academic_year", "type": "VARCHAR(20)", "pk": False, "fk": None, "desc": "Academic session"},
-                {"name": "class_teacher_id", "type": "INT", "pk": False, "fk": "teachers.teacher_id", "desc": "Class tutor"}
-            ]
-        },
-        "students": {
-            "columns": [
-                {"name": "student_id", "type": "INT", "pk": True, "fk": None, "desc": "Primary key"},
-                {"name": "admission_no", "type": "VARCHAR(30)", "pk": False, "fk": None, "desc": "Unique roll number"},
-                {"name": "first_name", "type": "VARCHAR(50)", "pk": False, "fk": None, "desc": "Student given name"},
-                {"name": "last_name", "type": "VARCHAR(50)", "pk": False, "fk": None, "desc": "Student surname"},
-                {"name": "class_id", "type": "INT", "pk": False, "fk": "classes.class_id", "desc": "Enrolled standard"},
-                {"name": "section", "type": "VARCHAR(5)", "pk": False, "fk": None, "desc": "Section A/B/C"},
-                {"name": "date_of_birth", "type": "DATE", "pk": False, "fk": None, "desc": "Birth date"},
-                {"name": "gender", "type": "VARCHAR(10)", "pk": False, "fk": None, "desc": "Male / Female"},
-                {"name": "city", "type": "VARCHAR(50)", "pk": False, "fk": None, "desc": "Residence city"},
-                {"name": "state", "type": "VARCHAR(50)", "pk": False, "fk": None, "desc": "Residence state"},
-                {"name": "enrollment_date", "type": "DATE", "pk": False, "fk": None, "desc": "Admission date"},
-                {"name": "status", "type": "VARCHAR(20)", "pk": False, "fk": None, "desc": "Active / Transferred"}
-            ]
-        },
-        "marks": {
-            "columns": [
-                {"name": "mark_id", "type": "INT", "pk": True, "fk": None, "desc": "Primary key"},
-                {"name": "student_id", "type": "INT", "pk": False, "fk": "students.student_id", "desc": "Foreign key"},
-                {"name": "subject_id", "type": "INT", "pk": False, "fk": "subjects.subject_id", "desc": "Foreign key"},
-                {"name": "marks_obtained", "type": "DECIMAL(5,2)", "pk": False, "fk": None, "desc": "Score 0-100"},
-                {"name": "exam_date", "type": "DATE", "pk": False, "fk": None, "desc": "Exam timestamp"}
-            ]
-        },
-        "attendance": {
-            "columns": [
-                {"name": "attendance_id", "type": "INT", "pk": True, "fk": None, "desc": "Primary key"},
-                {"name": "student_id", "type": "INT", "pk": False, "fk": "students.student_id", "desc": "Foreign key"},
-                {"name": "attendance_date", "type": "DATE", "pk": False, "fk": None, "desc": "Day of record"},
-                {"name": "attendance_status", "type": "VARCHAR(15)", "pk": False, "fk": None, "desc": "Present / Absent"}
-            ]
-        }
-    }
+    # 5. Schema extraction from canonical source in compiler.semantic_checker
+    from compiler.semantic_checker import SCHEMA_METADATA
+    schema_info = {tbl: {"columns": cols} for tbl, cols in SCHEMA_METADATA.items()}
 
     # 6. Precomputing real verdicts for presets
     parser = AutoGrammarParser()
     validator = QueryValidator(parser=parser)
 
-    # Load ML model for inference only
+    # Load ML models (primary for presets, baseline for JS export)
     clf_path = PROJECT_ROOT / "ml" / "saved_models" / "classifier.joblib"
     vec_path = PROJECT_ROOT / "ml" / "saved_models" / "vectorizer.joblib"
     clf = joblib.load(clf_path) if clf_path.exists() else None
     vec = joblib.load(vec_path) if vec_path.exists() else None
+
+    clf_base_path = PROJECT_ROOT / "ml" / "saved_models" / "classifier_baseline.joblib"
+    vec_base_path = PROJECT_ROOT / "ml" / "saved_models" / "vectorizer_baseline.joblib"
+    clf_base = joblib.load(clf_base_path) if clf_base_path.exists() else None
+    vec_base = joblib.load(vec_base_path) if vec_base_path.exists() else None
 
     # Presets specification (8 required + 4 extras)
     presets_spec = [
@@ -320,14 +270,16 @@ def build_site_data():
 
     # 7. Export TF-IDF vectorizer + Logistic Regression model for full offline JS inference
     ml_export = {}
-    if clf and vec:
+    target_vec = vec_base if (vec_base and hasattr(vec_base, "vocabulary_")) else (vec if (vec and hasattr(vec, "vocabulary_")) else None)
+    target_clf = clf_base if (clf_base and hasattr(clf_base, "coef_")) else (clf if (clf and hasattr(clf, "coef_")) else None)
+    if target_clf and target_vec:
         # Vocabulary mapping term -> index
-        vocab = {term: int(idx) for term, idx in vec.vocabulary_.items()}
+        vocab = {term: int(idx) for term, idx in target_vec.vocabulary_.items()}
         # idf vector
-        idf = [float(val) for val in vec.idf_]
+        idf = [float(val) for val in target_vec.idf_]
         # weights and intercept
-        coef = [float(val) for val in clf.coef_[0]]
-        intercept = float(clf.intercept_[0])
+        coef = [float(val) for val in target_clf.coef_[0]]
+        intercept = float(target_clf.intercept_[0])
         ml_export = {
             "vocabulary": vocab,
             "idf": idf,

@@ -3,6 +3,7 @@ Query Validator Orchestrator for AutoGrammar.
 Integrates Lexing, Syntax Parsing, Semantic Validation, and Security Analysis.
 """
 
+import re
 from typing import Dict, Any, List, Optional
 from compiler.lexer import SqlLexer
 from compiler.token_types import TokenType
@@ -27,42 +28,56 @@ class QueryValidator:
     def check_security(self, query: str, tokens: List[Any], semantics: Dict[str, Any]) -> List[CompilerDiagnostic]:
         """
         Enforces safety guardrails:
-          - Destructive statements (DROP, TRUNCATE, ALTER) are strictly rejected.
-          - Multi-statement command chaining (';' followed by commands) is prohibited.
+          - Destructive statements (DROP, TRUNCATE, ALTER, GRANT, REVOKE, EXEC) are strictly rejected.
+          - Multi-statement command chaining (';' followed by commands outside string literals) is prohibited.
           - Unrestricted UPDATE / DELETE statements without WHERE clauses are flagged.
+          - Comment-obfuscated bypass attempts are neutralized.
         """
         diagnostics: List[CompilerDiagnostic] = []
-        upper_query = query.upper()
 
-        # Check for forbidden destructive commands
-        forbidden = ["DROP", "TRUNCATE", "ALTER", "GRANT", "REVOKE", "EXEC", "EXECUTE"]
-        for cmd in forbidden:
-            if f" {cmd} " in f" {upper_query} " or upper_query.startswith(cmd + " "):
-                diagnostics.append(CompilerDiagnostic(
-                    phase="SECURITY",
-                    message=f"Dangerous SQL command '{cmd}' is prohibited in student DSL environment.",
-                    suggestion="AutoGrammar permits only controlled SELECT and sandboxed student DML."
-                ))
+        # 1. Strip comments before security checks to prevent obfuscation bypass (e.g. DROP/*comment*/TABLE)
+        stripped = re.sub(r'/\*[\s\S]*?\*/|--[^\r\n]*', ' ', query)
 
-        # Check for multi-statement injection (semicolon followed by non-whitespace)
-        if ";" in query:
-            parts = [p.strip() for p in query.split(";") if p.strip()]
-            if len(parts) > 1:
+        # 2. Check for forbidden administrative / destructive commands using regex word boundaries
+        forbidden_regex = r'\b(DROP|TRUNCATE|ALTER|GRANT|REVOKE|EXEC|EXECUTE)\b'
+        forbidden_match = re.search(forbidden_regex, stripped, re.IGNORECASE)
+        if forbidden_match:
+            cmd = forbidden_match.group(1).upper()
+            diagnostics.append(CompilerDiagnostic(
+                phase="SECURITY",
+                message=f"Dangerous SQL command '{cmd}' is prohibited in student DSL environment.",
+                suggestion="AutoGrammar permits only controlled SELECT and sandboxed student DML."
+            ))
+
+        # 3. Check for multi-statement injection (ignoring semicolons inside quoted string literals)
+        no_strings = re.sub(r"'([^'\\]|\\.|\'\')*'", "''", stripped)
+        if ";" in no_strings:
+            stmts = [p.strip() for p in no_strings.split(";") if p.strip()]
+            if len(stmts) > 1:
                 diagnostics.append(CompilerDiagnostic(
                     phase="SECURITY",
                     message="Multiple SQL statements detected. Command batching is blocked to prevent injection attacks.",
                     suggestion="Execute one statement at a time."
                 ))
 
-        # Check unconstrained UPDATE / DELETE
+        # 4. Check unconstrained UPDATE / DELETE (both pre-parse pattern and post-parse semantics)
         clauses = semantics.get("clauses", [])
-        if "DELETE" in clauses and "WHERE" not in clauses:
+        is_unconstrained_del = (
+            ("DELETE" in clauses and "WHERE" not in clauses) or
+            (re.search(r'\bDELETE\s+FROM\b', no_strings, re.IGNORECASE) and not re.search(r'\bWHERE\b', no_strings, re.IGNORECASE))
+        )
+        if is_unconstrained_del and not any("Unconstrained DELETE" in d.message for d in diagnostics):
             diagnostics.append(CompilerDiagnostic(
                 phase="SECURITY",
                 message="Unconstrained DELETE without WHERE clause is dangerous and prohibited.",
                 suggestion="Add a specific WHERE condition (e.g. WHERE student_id = ...)."
             ))
-        if "UPDATE" in clauses and "WHERE" not in clauses:
+
+        is_unconstrained_upd = (
+            ("UPDATE" in clauses and "WHERE" not in clauses) or
+            (re.search(r'\bUPDATE\s+[a-zA-Z_][a-zA-Z0-9_]*\s+SET\b', no_strings, re.IGNORECASE) and not re.search(r'\bWHERE\b', no_strings, re.IGNORECASE))
+        )
+        if is_unconstrained_upd and not any("Unconstrained UPDATE" in d.message for d in diagnostics):
             diagnostics.append(CompilerDiagnostic(
                 phase="SECURITY",
                 message="Unconstrained UPDATE without WHERE clause is dangerous and prohibited.",
@@ -139,9 +154,11 @@ class QueryValidator:
         parse_res = self.parser.parse(cleaned_query, grammar_choice=grammar_choice)
         if not parse_res["success"]:
             all_diagnostics.extend(parse_res["diagnostics"])
+            first_phase = parse_res["diagnostics"][0].phase if parse_res["diagnostics"] else "SYNTAX"
+            stage_reached = "BACKEND" if first_phase == "BACKEND" else ("LEXICAL" if first_phase == "LEXICAL" else "SYNTAX")
             return {
                 "valid": False,
-                "stage_reached": "SYNTAX",
+                "stage_reached": stage_reached,
                 "grammar_choice": grammar_choice,
                 "tokens": [t.to_dict() for t in tokens],
                 "parse_tree_ascii": "",

@@ -2,7 +2,9 @@
 Learning Curve Generation for AutoGrammar Induction Engine.
 Measures the effect of training corpus diversity (template coverage) on generalization:
 Evaluates grammar induction on 10%, 25%, 50%, 75%, and 100% of training templates.
+Saves each induced grammar artifact for reproducible rule inspection and comparison.
 Outputs:
+  - evaluation/results/grammars/learning_curve_<pct>pct.lark
   - evaluation/results/learning_curve.json
   - evaluation/results/learning_curve.csv
   - evaluation/results/learning_curve.png
@@ -35,12 +37,15 @@ def compute_learning_curve(
 ) -> List[Dict[str, Any]]:
     """
     Computes accuracy, TPR, TNR, FAR, and FRR across subsets of training templates.
+    Saves each induced candidate grammar artifact to allow structural comparison.
     """
     if fractions is None:
         fractions = [0.10, 0.25, 0.50, 0.75, 1.00]
 
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
+    grammars_dir = out_path / "grammars"
+    grammars_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[*] Loading datasets: train={train_path}, test={test_path}")
     train_df = pd.read_csv(train_path)
@@ -61,17 +66,43 @@ def compute_learning_curve(
     total_test = len(test_df)
 
     curve_results = []
+    previous_ebnf = None
 
     for frac in fractions:
         num_templates = max(1, int(round(total_templates * frac)))
         selected_templates = set(shuffled_templates[:num_templates])
         sub_train_queries = valid_train_df[valid_train_df["template_id"].isin(selected_templates)]["query_text"].tolist()
 
-        print(f"\n[*] Evaluating at {int(frac * 100)}% templates ({num_templates}/{total_templates} templates, {len(sub_train_queries)} valid queries)...")
+        pct_label = int(round(frac * 100))
+        print(f"\n[*] Evaluating at {pct_label}% templates ({num_templates}/{total_templates} templates, {len(sub_train_queries)} valid queries)...")
 
         engine = GrammarInductionEngine()
-        engine.train_on_queries(sub_train_queries)
+        train_stats = engine.train_on_queries(sub_train_queries)
         candidate_ebnf = engine.generate_candidate_ebnf()
+
+        # Save the exact induced grammar file for this fraction
+        grammar_filename = f"learning_curve_{pct_label}pct.lark"
+        grammar_file_path = grammars_dir / grammar_filename
+        with open(grammar_file_path, "w", encoding="utf-8") as f:
+            f.write(candidate_ebnf)
+
+        # Count production rules in generated grammar
+        rule_lines = [
+            l.split(":")[0].strip().lstrip("?")
+            for l in candidate_ebnf.splitlines()
+            if ":" in l and not l.strip().startswith("//") and not l.strip().startswith("%")
+        ]
+        rule_count = len(set(rule_lines))
+
+        # Check grammar equivalence with previous fraction
+        is_same_as_prev = False
+        if previous_ebnf is not None:
+            # Compare ignoring dynamic timestamp comments
+            lines_prev = [l for l in previous_ebnf.splitlines() if not l.startswith("// Inferred at:")]
+            lines_curr = [l for l in candidate_ebnf.splitlines() if not l.startswith("// Inferred at:")]
+            is_same_as_prev = (lines_prev == lines_curr)
+
+        previous_ebnf = candidate_ebnf
 
         is_valid, err = engine.validate_grammar(candidate_ebnf)
         if not is_valid:
@@ -80,10 +111,7 @@ def compute_learning_curve(
 
         lark_parser = Lark(candidate_ebnf, start="start", parser="earley", ambiguity="resolve")
 
-        tp = 0
-        tn = 0
-        fp = 0
-        fn = 0
+        tp, tn, fp, fn = 0, 0, 0, 0
 
         for _, row in test_df.iterrows():
             q_text = row["query_text"]
@@ -111,10 +139,16 @@ def compute_learning_curve(
         frr = fn / total_valid if total_valid > 0 else 0.0
 
         pt_data = {
-            "template_percentage": int(round(frac * 100)),
+            "template_percentage": pct_label,
             "fraction": frac,
             "template_count": num_templates,
             "training_query_count": len(sub_train_queries),
+            "grammar_file": str(grammar_file_path),
+            "grammar_char_length": len(candidate_ebnf),
+            "grammar_rule_count": rule_count,
+            "discovered_statement_types": sorted(list(engine.observed_statement_types)),
+            "observed_clauses": sorted(list(engine.observed_clauses)),
+            "identical_to_previous_grammar": is_same_as_prev,
             "accuracy": round(accuracy, 4),
             "tpr": round(tpr, 4),
             "tnr": round(tnr, 4),
@@ -126,6 +160,7 @@ def compute_learning_curve(
             "fn": fn
         }
         curve_results.append(pt_data)
+        print(f"    Rules: {rule_count} | GramChars: {len(candidate_ebnf)} | Identical to Prev: {is_same_as_prev}")
         print(f"    Accuracy: {accuracy:.4f} | TPR: {tpr:.4f} | FRR: {frr:.4f} | FAR: {far:.4f}")
 
     # Save JSON and CSV

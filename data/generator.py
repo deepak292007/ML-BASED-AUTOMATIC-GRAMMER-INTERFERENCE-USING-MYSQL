@@ -10,6 +10,7 @@ import os
 import json
 import random
 import datetime
+from collections import defaultdict
 from typing import List, Dict, Tuple, Any
 import pandas as pd
 import numpy as np
@@ -270,8 +271,20 @@ def define_query_templates() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]
          "fmt": "SELECT subject_id, AVG(marks_obtained) AS avg_score FROM marks GROUP BY subject_id HAVING AVG(marks_obtained) >= {marks};"},
         {"template_id": "V_AGG_05", "cat": "AGGREGATION", "complexity": "Moderate", "clauses": ["SELECT", "FROM"],
          "fmt": "SELECT MIN(marks_obtained) AS min_m, MAX(marks_obtained) AS max_m FROM marks;"},
+        {"template_id": "V_AGG_06", "cat": "AGGREGATION", "complexity": "Simple", "clauses": ["SELECT", "FROM"],
+         "fmt": "SELECT COUNT(subject_id) FROM subjects;"},
+        {"template_id": "V_AGG_07", "cat": "AGGREGATION", "complexity": "Moderate", "clauses": ["SELECT", "FROM"],
+         "fmt": "SELECT SUM(marks_obtained) AS total_marks FROM marks;"},
+        {"template_id": "V_AGG_08", "cat": "AGGREGATION", "complexity": "Moderate", "clauses": ["SELECT", "FROM", "GROUP BY"],
+         "fmt": "SELECT exam_name, AVG(marks_obtained) FROM marks GROUP BY exam_name;"},
+        {"template_id": "V_AGG_09", "cat": "AGGREGATION", "complexity": "Moderate", "clauses": ["SELECT", "FROM", "WHERE"],
+         "fmt": "SELECT COUNT(*) FROM students WHERE city = '{city}';"},
+        {"template_id": "V_AGG_10", "cat": "AGGREGATION", "complexity": "Simple", "clauses": ["SELECT", "FROM"],
+         "fmt": "SELECT AVG(marks_obtained) FROM marks;"},
+        {"template_id": "V_AGG_11", "cat": "AGGREGATION", "complexity": "Simple", "clauses": ["SELECT", "FROM"],
+         "fmt": "SELECT COUNT(*) FROM {table};"},
 
-        # Cat 7: JOINs (INNER and LEFT JOIN)
+        # Cat 7: JOINs (INNER, LEFT, and Plain JOINs)
         {"template_id": "V_JON_01", "cat": "JOINS", "complexity": "Complex", "clauses": ["SELECT", "FROM", "JOIN", "WHERE"],
          "fmt": "SELECT s.first_name, s.last_name, m.marks_obtained FROM students AS s INNER JOIN marks AS m ON s.student_id = m.student_id WHERE m.marks_obtained >= {marks};"},
         {"template_id": "V_JON_02", "cat": "JOINS", "complexity": "Complex", "clauses": ["SELECT", "FROM", "JOIN", "WHERE"],
@@ -280,6 +293,16 @@ def define_query_templates() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]
          "fmt": "SELECT s.admission_no, s.first_name, c.class_name FROM students AS s INNER JOIN classes AS c ON s.class_id = c.class_id;"},
         {"template_id": "V_JON_04", "cat": "JOINS", "complexity": "Complex", "clauses": ["SELECT", "FROM", "JOIN", "GROUP BY"],
          "fmt": "SELECT sub.subject_name, AVG(m.marks_obtained) AS avg_mark FROM subjects AS sub INNER JOIN marks AS m ON sub.subject_id = m.subject_id GROUP BY sub.subject_name;"},
+        {"template_id": "V_JON_05", "cat": "JOINS", "complexity": "Complex", "clauses": ["SELECT", "FROM", "JOIN"],
+         "fmt": "SELECT s.first_name, m.marks_obtained FROM students AS s JOIN marks AS m ON s.student_id = m.student_id;"},
+        {"template_id": "V_JON_06", "cat": "JOINS", "complexity": "Complex", "clauses": ["SELECT", "FROM", "JOIN"],
+         "fmt": "SELECT students.first_name, marks.marks_obtained FROM students JOIN marks ON students.student_id = marks.student_id;"},
+        {"template_id": "V_JON_07", "cat": "JOINS", "complexity": "Complex", "clauses": ["SELECT", "FROM", "JOIN", "WHERE"],
+         "fmt": "SELECT s.first_name, m.marks_obtained FROM students AS s JOIN marks AS m ON s.student_id = m.student_id AND s.class_id = {class_id};"},
+        {"template_id": "V_JON_08", "cat": "JOINS", "complexity": "Complex", "clauses": ["SELECT", "FROM", "JOIN", "WHERE", "ORDER BY"],
+         "fmt": "SELECT s.first_name, m.marks_obtained FROM students AS s JOIN marks AS m ON s.student_id = m.student_id WHERE m.marks_obtained >= {marks} ORDER BY m.marks_obtained DESC;"},
+        {"template_id": "V_JON_09", "cat": "JOINS", "complexity": "Simple", "clauses": ["SELECT", "FROM"],
+         "fmt": "SELECT s.first_name FROM students AS s;"},
 
         # Cat 8: Date-based queries
         {"template_id": "V_DTE_01", "cat": "DATE_FILTER", "complexity": "Moderate", "clauses": ["SELECT", "FROM", "WHERE"],
@@ -367,6 +390,14 @@ def define_query_templates() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]
          "fmt": "SELECT first_name, last_name, FROM students;"},
         {"template_id": "I_SYN_16", "cat": "INVALID_SYNTAX", "error_type": "Missing ON Clause in JOIN", "complexity": "Moderate",
          "fmt": "SELECT s.first_name, m.marks_obtained FROM students AS s JOIN marks AS m WHERE m.marks_obtained > 50;"},
+        {"template_id": "I_SYN_17", "cat": "INVALID_SYNTAX", "error_type": "Missing JOIN Condition in ON", "complexity": "Moderate",
+         "fmt": "SELECT s.first_name, m.marks_obtained FROM students AS s JOIN marks AS m ON;"},
+        {"template_id": "I_SYN_18", "cat": "INVALID_SYNTAX", "error_type": "Unclosed Parenthesis in Aggregate", "complexity": "Simple",
+         "fmt": "SELECT COUNT( FROM subjects;"},
+        {"template_id": "I_SYN_19", "cat": "INVALID_SYNTAX", "error_type": "Missing FROM in Aggregate Query", "complexity": "Simple",
+         "fmt": "SELECT COUNT(*) subjects;"},
+        {"template_id": "I_SYN_20", "cat": "INVALID_SYNTAX", "error_type": "Missing Right-Hand Value in WHERE", "complexity": "Simple",
+         "fmt": "SELECT * FROM students WHERE city =;"},
 
         # Semantic & Schema Errors (Syntactically looks like SQL, but invalid schema/type)
         {"template_id": "I_SEM_01", "cat": "INVALID_SCHEMA", "error_type": "Nonexistent Table", "complexity": "Simple",
@@ -377,6 +408,14 @@ def define_query_templates() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]
          "fmt": "SELECT s.first_name, s.exam_name FROM students AS s;"},
         {"template_id": "I_SEM_04", "cat": "INVALID_SCHEMA", "error_type": "Invalid Column in GROUP BY", "complexity": "Moderate",
          "fmt": "SELECT non_existent_col, COUNT(*) FROM students GROUP BY non_existent_col;"},
+        {"template_id": "I_SEM_05", "cat": "INVALID_SCHEMA", "error_type": "Invalid Column in Aggregate", "complexity": "Simple",
+         "fmt": "SELECT AVG(unknown_column) FROM marks;"},
+        {"template_id": "I_SEM_06", "cat": "INVALID_SCHEMA", "error_type": "Invalid Column with Table Alias", "complexity": "Moderate",
+         "fmt": "SELECT s.unknown_column FROM students AS s;"},
+        {"template_id": "I_SEM_07", "cat": "INVALID_SCHEMA", "error_type": "Invalid Table in SELECT", "complexity": "Simple",
+         "fmt": "SELECT * FROM unknown_table;"},
+        {"template_id": "I_SEM_08", "cat": "INVALID_SCHEMA", "error_type": "Invalid Column in JOIN Condition", "complexity": "Complex",
+         "fmt": "SELECT s.first_name, m.marks_obtained FROM students AS s JOIN marks AS m ON s.nonexistent_id = m.student_id;"},
 
         # Unsupported SQL Construct (Out of Domain DSL Scope)
         {"template_id": "I_USP_01", "cat": "UNSUPPORTED_SYNTAX", "error_type": "Unsupported Window Function", "complexity": "Complex",
@@ -504,31 +543,45 @@ def split_dataset_by_template(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Mandatory Data Leakage Prevention:
-    Splits the dataset by `template_id` so that structural templates present in train
-    do NOT leak into validation or test sets. Both valid and invalid templates are partitioned.
+    Splits the dataset by `template_id` using category stratification so that structural
+    templates present in train do NOT leak into validation or test sets. Both valid and
+    invalid templates are partitioned with zero overlap across splits.
     """
     rng = random.Random(seed)
 
-    valid_tpls = sorted(df[df["validity_label"] == 1]["template_id"].unique())
-    invalid_tpls = sorted(df[df["validity_label"] == 0]["template_id"].unique())
+    def strat_partition(sub_df: pd.DataFrame):
+        tpl_cat_map = sub_df[["template_id", "query_type"]].drop_duplicates()
+        cats = defaultdict(list)
+        for _, row in tpl_cat_map.iterrows():
+            cats[row["query_type"]].append(row["template_id"])
+        tr, va, te = [], [], []
+        for cat in sorted(cats.keys()):
+            ids = sorted(cats[cat])
+            rng.shuffle(ids)
+            n = len(ids)
+            if n == 1:
+                tr.extend(ids)
+            elif n == 2:
+                tr.append(ids[0])
+                va.append(ids[1])
+            elif n == 3:
+                tr.append(ids[0])
+                va.append(ids[1])
+                te.append(ids[2])
+            else:
+                n_tr = max(1, int(round(n * train_ratio)))
+                n_va = max(1, int(round(n * val_ratio)))
+                tr.extend(ids[:n_tr])
+                va.extend(ids[n_tr:n_tr + n_va])
+                rem = ids[n_tr + n_va:]
+                if not rem:
+                    rem = va[-1:]
+                    va = va[:-1]
+                te.extend(rem)
+        return tr, va, te
 
-    rng.shuffle(valid_tpls)
-    rng.shuffle(invalid_tpls)
-
-    def partition_list(items):
-        n = len(items)
-        n_train = max(1, int(round(n * train_ratio)))
-        n_val = max(1, int(round(n * val_ratio)))
-        train_items = items[:n_train]
-        val_items = items[n_train:n_train + n_val]
-        test_items = items[n_train + n_val:]
-        if not test_items:  # guarantee test set has at least 1 template
-            test_items = val_items[-1:]
-            val_items = val_items[:-1]
-        return train_items, val_items, test_items
-
-    v_tr, v_va, v_te = partition_list(valid_tpls)
-    i_tr, i_va, i_te = partition_list(invalid_tpls)
+    v_tr, v_va, v_te = strat_partition(df[df["validity_label"] == 1])
+    i_tr, i_va, i_te = strat_partition(df[df["validity_label"] == 0])
 
     train_tpls = set(v_tr + i_tr)
     val_tpls = set(v_va + i_va)

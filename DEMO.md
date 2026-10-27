@@ -74,10 +74,11 @@ The web application will open at `http://localhost:8501`.
   - Review the 1,146 test query benchmarks:
     - **Baseline Grammar**: 100% Accuracy, 100% TPR, 100% TNR, 0% FAR, 0% FRR.
     - **Learned Grammar**: 89.53% Accuracy, 85.71% TPR, 100% TNR, 0% FAR, 14.29% FRR.
-    - **ML Classifier**: 66.67% Accuracy, 85.12% TPR, 16.01% TNR, 83.99% FAR.
+    - **ML Primary Model (Linear SVM)**: 76.09% Accuracy, 85.71% TPR, 49.67% TNR, 50.33% FAR, 14.29% FRR.
+    - **ML Baseline (Logistic Regression)**: 66.67% Accuracy, 85.12% TPR, 16.01% TNR, 83.99% FAR, 14.88% FRR.
 - **Confusion Matrices**: Inspect TP, TN, FP, FN side-by-side.
 - **Invalid Category Breakdown**:
-  - See how compilers achieve 100% rejection on Double Operator, Missing Table Name, Missing SET, and Unsupported CTE, whereas the statistical classifier falsely accepts over 80% of them.
+  - See how compilers achieve 100% rejection on Double Operator, Missing Table Name, Missing SET, and Unsupported CTE, whereas statistical classifiers falsely accept 50.3% to 84.0% of invalid queries (failing completely on missing table and missing SET clauses).
 - **False-Rejection Explorer**: Filter the 120 valid queries rejected by the unrefined learned grammar by template.
 
 ---

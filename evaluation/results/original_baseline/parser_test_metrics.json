@@ -1,0 +1,32 @@
+{
+  "baseline": {
+    "total_queries": 1146,
+    "total_valid": 840,
+    "total_invalid": 306,
+    "true_positive": 840,
+    "true_negative": 306,
+    "false_positive": 0,
+    "false_negative": 0,
+    "valid_acceptance_rate": 1.0,
+    "invalid_rejection_rate": 1.0,
+    "false_acceptance_rate": 0.0,
+    "false_rejection_rate": 0.0,
+    "overall_accuracy": 1.0,
+    "parse_tree_generation_rate": 0.733
+  },
+  "learned": {
+    "total_queries": 1146,
+    "total_valid": 840,
+    "total_invalid": 306,
+    "true_positive": 720,
+    "true_negative": 306,
+    "false_positive": 0,
+    "false_negative": 120,
+    "valid_acceptance_rate": 0.8571,
+    "invalid_rejection_rate": 1.0,
+    "false_acceptance_rate": 0.0,
+    "false_rejection_rate": 0.1429,
+    "overall_accuracy": 0.8953,
+    "parse_tree_generation_rate": 0.6283
+  }
+}

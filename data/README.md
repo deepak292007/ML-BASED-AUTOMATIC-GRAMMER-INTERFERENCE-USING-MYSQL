@@ -18,8 +18,8 @@ This dataset contains synthetic, culturally authentic Indian school management r
 
 ## Data Leakage Prevention
 Splits are grouped strictly by `template_id`:
-- **Train**: 4826 queries (47 distinct templates)
-- **Validation**: 1028 queries (10 distinct templates)
-- **Test**: 1146 queries (11 distinct templates)
+- **Train**: 4427 queries (55 distinct templates)
+- **Validation**: 1459 queries (18 distinct templates)
+- **Test**: 1114 queries (14 distinct templates)
 
 No template in the training set appears in validation or test splits.

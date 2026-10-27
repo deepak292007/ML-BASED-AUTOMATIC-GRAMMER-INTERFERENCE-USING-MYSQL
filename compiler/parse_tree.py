@@ -84,6 +84,9 @@ def extract_query_semantics(tree: Tree) -> Dict[str, Any]:
         if "delete" in rule:
             clauses.add("DELETE")
 
+        if "aggregate" in rule or "count_expr" in rule or "regular_agg" in rule:
+            clauses.add("AGGREGATE")
+
         if rule == "table_source":
             # [CNAME, [AS, CNAME]]
             tokens = [c.value for c in node.children if isinstance(c, LarkToken)]
@@ -103,12 +106,18 @@ def extract_query_semantics(tree: Tree) -> Dict[str, Any]:
             if tokens:
                 tables.add(tokens[0].lower())
 
+        elif rule == "select_item":
+            tokens = [c.value for c in node.children if isinstance(c, LarkToken) and c.value == "*"]
+            if tokens:
+                columns.add("*")
+
         elif rule == "column_ref":
             tokens = [c.value for c in node.children if isinstance(c, LarkToken)]
             if len(tokens) == 1:
-                columns.add(tokens[0].lower())
-            elif len(tokens) == 2:
-                # alias.col or table.col
+                if tokens[0] != "*":
+                    columns.add(tokens[0].lower())
+            elif len(tokens) >= 2:
+                # alias.col or table.col or alias.*
                 columns.add(f"{tokens[0].lower()}.{tokens[1].lower()}")
 
         for child in node.children:

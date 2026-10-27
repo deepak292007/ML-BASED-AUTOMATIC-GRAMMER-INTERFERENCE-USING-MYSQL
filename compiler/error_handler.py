@@ -53,7 +53,7 @@ def format_lark_syntax_error(error: Exception, query_text: str) -> CompilerDiagn
     line = getattr(error, "line", None)
     column = getattr(error, "column", None)
     token = getattr(error, "token", None)
-    unexpected = str(token.value) if token else None
+    unexpected = str(token.value) if token else getattr(error, "char", None)
     expected = list(getattr(error, "expected", []))
 
     # Construct contextual suggestion
